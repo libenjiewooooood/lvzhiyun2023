@@ -3,7 +3,7 @@ import gurobipy as gp
 from gurobipy import GRB
 
 class SubProblem:
-    def __init__(self, pi:list, M, V, m_f: list, m_g: list, F : list, G :list, b, h) -> None:
+    def __init__(self, pi:list, M, V, m_f: list, m_g: list, F : list, G :list, b, h, S) -> None:
         self.F = F 
         self.G = G
         #F 出发点节点集合，G目的地节点集合
@@ -19,6 +19,8 @@ class SubProblem:
         #流平衡矩阵
         self.h = h
         #终点返回起点消耗电量
+        self.S = S
+        #起点集合
         
         
     def create_model(self):
@@ -31,7 +33,8 @@ class SubProblem:
         for v in self.V:
             self.model.addConstr(gp.quicksum(self.b[v, f]*self.x[f] for f in self.F) + gp.quicksum(self.b[v, g]*self.x[g] for g in self.G) == 0)
         #节点流平衡约束
-        self.model.addConstr((gp.quicksum(self.h[g]*self.x[g] for g in range(self.G) ) == 1))
+        for s in self.S:
+            self.model.addConstr((gp.quicksum(self.h[g,s]*self.x[g] for g in range(self.G) ) == 1))
         #回到出发点流为1
 
     def set_objective(self, pi):
