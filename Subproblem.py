@@ -3,8 +3,9 @@ import gurobipy as gp
 from gurobipy import GRB
 
 class SubProblem:
-    def __init__(self, pi:list, M, V, m_f: list, m_g: list) -> None:
-        self.F, self.G 
+    def __init__(self, pi:list, M, V, m_f: list, m_g: list, F : list, G :list, b, h) -> None:
+        self.F = F 
+        self.G = G
         #F 出发点节点集合，G目的地节点集合
         self.M = M 
          #M 电池最大容量
@@ -14,6 +15,10 @@ class SubProblem:
         #m_g空载路径g耗电量
         self.V = V
         #V 节点集合
+        self.b = b
+        #流平衡矩阵
+        self.h = h
+        #终点返回起点消耗电量
         
         
     def create_model(self):
@@ -24,13 +29,13 @@ class SubProblem:
         self.model.addConstr((gp.quicksum(self.m_f[f]*self.x[f]+self.m_g*self.x[g] for f in range(self.F) for g in range(self.G) ) <= self.M))
         #电池容量约束
         for v in self.V:
-            self.model.addConstr(gp.quicksum(b[v, f]*self.x[f] for f in self.F) + gp.quicksum(b[v, g]*x[g] for g in self.G) == 0)
+            self.model.addConstr(gp.quicksum(self.b[v, f]*self.x[f] for f in self.F) + gp.quicksum(self.b[v, g]*self.x[g] for g in self.G) == 0)
         #节点流平衡约束
         self.model.addConstr((gp.quicksum(self.h[g]*self.x[g] for g in range(self.G) ) == 1))
         #回到出发点流为1
 
     def set_objective(self, pi):
-        self.model.setObjective(gp.quicksum(pi[i]*self.y[i] for i in range(self.M)), sense = GRB.MAXIMIZE)
+        self.model.setObjective(gp.quicksum(pi[f]*self.x[f] for f in range(self.F)), sense = GRB.MAXIMIZE)
         #生成目的函数
 
     def solve(self, flag = 0):
