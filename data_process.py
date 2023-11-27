@@ -2,20 +2,13 @@ import numpy as np
 import pandas as pd
 import re
 
-# 输入数据
-u = 3  # 货车最大载货量
-order = pd.DataFrame([['A', 'B', 10], ['A', 'D', 8], ['B', 'C', 13], ['D', 'C', 4]], columns=['start', 'end', 'weight'])
-location = pd.DataFrame([[0, 0], [1, 1], [4, 1], [1.5, -1], [5, -2]], index=['S', 'A', 'B', 'C', 'D'],
-                        columns=['x', 'y'])
-pcost_f, pcost_g = 1, 0.8  # 单位距离满载/空载耗能
-
 
 # 求两点距离函数
 def coordi2distance(a, b):
     return ((a['x'] - b['x']) ** 2 + (a['y'] - b['y']) ** 2) ** 0.5
 
 
-def data_pre(u, order, location, pcost_f, pcost_g):
+def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_g: float):
     df = order['weight']
     s, e = set(order['start']), set(order['end'])
     V = {'S'} | s | e  # 所有结点
@@ -51,7 +44,7 @@ def data_pre(u, order, location, pcost_f, pcost_g):
     for v in V:
         for x in L:
             m = re.search(v, x)
-            if m == None:
+            if m is None:
                 b_vl.loc[v, x] = 0
             elif m.start() == 0:
                 b_vl.loc[v, x] = -1
@@ -62,5 +55,23 @@ def data_pre(u, order, location, pcost_f, pcost_g):
     h_gs[h_gs == -1] = 0
     return df, V, F, m_f, G, m_g, L, h_gs, b_vl
 
+
 if __name__ == "__main__":
-    df, V, F, m_f, G, m_g, L, h_gs, b_vl = data_pre(u, order, location, pcost_f, pcost_g)
+    # 输入数据
+    u = 3  # 货车最大载货量
+    m = 100  # 最大电容量
+    # 订单
+    order = pd.DataFrame([['A', 'B', 10],
+                          ['A', 'D', 8],
+                          ['B', 'C', 13],
+                          ['D', 'C', 4]], columns=['start', 'end', 'weight'])
+    # 货运节点
+    location = pd.DataFrame([[0, 0],
+                             [1, 1],
+                             [4, 1],
+                             [1.5, -1],
+                             [5, -2]],
+                            index=['S', 'A', 'B', 'C', 'D'], columns=['x', 'y'])
+    pcost_f, pcost_g = 1, 0.8  # 单位距离满载, 空载耗能
+
+    df, V, F, m_f, G, m_g, L, h_gs, b_vl = data_pre(order, location, pcost_f, pcost_g)
