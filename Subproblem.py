@@ -33,7 +33,7 @@ class SubProblem:
         self.model.addConstr(gp.quicksum(self.m_f[self.F.index(f)]*self.x[f] for f in self.F)+gp.quicksum(self.m_g[self.F.index(g)]*self.x[g] for g in self.G) <= self.M)
         #电池容量约束
         for v in self.V:
-            self.model.addConstr(gp.quicksum(self.b[v,f]*self.x[f] for f in self.F) + gp.quicksum(self.b[v, g]*self.x[g] for g in len(self.G)) == 0)
+            self.model.addConstr(gp.quicksum(self.b.loc[v,f]*self.x[f] for f in self.F) + gp.quicksum(self.b.loc[v, g]*self.x[g] for g in self.G) == 0)
         #节点流平衡约束
         self.model.addConstr((gp.quicksum(self.b.loc['S',l].abs()*self.x[l] for l in self.L) == 2))
         #出发节点只有两条连线
@@ -48,7 +48,7 @@ class SubProblem:
         self.model.optimize() #求解方法
     
     def get_solution(self):
-        return [self.model.getVars()[i].x for i in range(len(self.L))]
+        return [self.model.getVars()[i].x for i in self.L]
         #获取主问题中x
 
     def get_reduced_cost(self):
