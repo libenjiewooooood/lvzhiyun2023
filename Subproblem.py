@@ -5,8 +5,6 @@ from gurobipy import GRB
 
 class SubProblem:
     def __init__(self, pi: list, M, V, m_f: list, m_g: list, F: list, G: list, b, h, S) -> None:
-        self.x = None
-        self.model = None
         self.F = F
         self.G = G
         # F 出发点节点集合，G目的地节点集合
@@ -24,6 +22,8 @@ class SubProblem:
         # 终点返回起点消耗电量
         self.S = S
         # 起点集合
+        self.x = None
+        self.model = None
 
     def create_model(self):
         self.model = gp.Model("sub model")
@@ -59,3 +59,7 @@ class SubProblem:
 
     def write(self):
         self.model.write("sub_model.lp")
+
+
+if __name__ == "__main__":
+    pass
