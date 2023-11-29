@@ -1,6 +1,7 @@
 import pandas as pd
 from data_process import data_pre
-
+from Subproblem import SubProblem
+from Master_problem import MasterProblem
 
 # 输入数据
 u = 3  # 货车最大载货量
@@ -9,7 +10,7 @@ m = 100  # 最大电容量
 order = pd.DataFrame([['A', 'B', 10],
                       ['A', 'D', 8],
                       ['B', 'C', 13],
-                      ['D', 'C', 4]], columns=['start', 'end', 'weight'])
+                      ['D', 'C', 14]], columns=['start', 'end', 'weight'])
 # 货运节点
 location = pd.DataFrame([[0, 0],
                          [1, 1],

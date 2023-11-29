@@ -9,6 +9,22 @@ def coordi2distance(a, b):
 
 
 def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_g: float):
+    """
+    :param order: 订单集合, index=['AB', 'DC']
+    :param location: 运输节点集合
+    :param pcost_f: 单位距离满载消耗
+    :param pcost_g: 单位距离空载消耗
+    :return:
+    V:[str] 运输节点集合
+    F:[str] 订单集合，满载运输弧集合
+    G:[str] 空载运输弧集合
+    L:[str] 弧集合，L = F or G
+    d_f:Series 订单运输需求, index=F, 例如index=['AB', 'DC'] TODO
+    m_f:Series 满载运输弧的运输电量消耗, index=F TODO
+    m_g:Series 空载运输弧的运输电量消耗, index=G TODO
+    b_vl:pd.DataFrame 关联矩阵，index=V, name=L
+    # 如果有时间，增加一个路径的可视化
+    """
     df = order['weight']
     s, e = set(order['start']), set(order['end'])
     V = {'S'} | s | e  # 所有结点
@@ -57,21 +73,4 @@ def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_
 
 
 if __name__ == "__main__":
-    # 输入数据
-    u = 3  # 货车最大载货量
-    m = 100  # 最大电容量
-    # 订单
-    order = pd.DataFrame([['A', 'B', 10],
-                          ['A', 'D', 8],
-                          ['B', 'C', 13],
-                          ['D', 'C', 4]], columns=['start', 'end', 'weight'])
-    # 货运节点
-    location = pd.DataFrame([[0, 0],
-                             [1, 1],
-                             [4, 1],
-                             [1.5, -1],
-                             [5, -2]],
-                            index=['S', 'A', 'B', 'C', 'D'], columns=['x', 'y'])
-    pcost_f, pcost_g = 1, 0.8  # 单位距离满载, 空载耗能
-
-    df, V, F, m_f, G, m_g, L, h_gs, b_vl = data_pre(order, location, pcost_f, pcost_g)
+    pass
