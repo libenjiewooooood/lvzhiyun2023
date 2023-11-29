@@ -1,7 +1,9 @@
 import numpy as np
 import gurobipy as gp
+import pandas as pd
 from gurobipy import GRB
 from pandas import Series, DataFrame
+
 
 
 class SubProblem:
@@ -43,20 +45,20 @@ class SubProblem:
         # 初始化子问题
         self.x = self.model.addVars(self.L, lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='x')
         # 定义整数变量x
-        battery_ct = gp.quicksum(self.m_f[f] * self.x[f] for f in self.F) + \
-                     gp.quicksum(self.m_g[g] * self.x[g] for g in self.G) <= self.M
+        battery_ct = gp.quicksum(self.m_f[self.F.index(f)] * self.x[f] for f in self.F) + \
+                     gp.quicksum(self.m_g[self.G.index(g)] * self.x[g] for g in self.G) <= self.M
         self.model.addConstr(battery_ct, name="battery_ct")
         # 电池容量约束
         # TODO 对关联矩阵b_vl加约束
         for v in self.V:
-            self.model.addConstr(gp.quicksum(self.b.loc[v, f] * self.x[f] for f in self.F) + gp.quicksum(
-                self.b.loc[v, g] * self.x[g] for g in self.G) == 0, name=f'vector{v}')
+            self.model.addConstr(gp.quicksum(self.b_vl.loc[v, f] * self.x[f] for f in self.F) + gp.quicksum(
+                self.b_vl.loc[v, g] * self.x[g] for g in self.G) == 0, name=f'vector{v}')
         # 节点流平衡约束
-        self.model.addConstr((gp.quicksum(self.b.loc['S', l].abs() * self.x[l] for l in self.L) == 2))
+        self.model.addConstr((gp.quicksum(abs(self.b_vl.loc['S', l]) * self.x[l] for l in self.L) == 2))
         # 出发节点只有两条连线
 
     def set_objective(self, pi):
-        self.model.setObjective(gp.quicksum(pi[self.x.index[f]] * self.x[f] for f in self.F), sense=GRB.MAXIMIZE)
+        self.model.setObjective(gp.quicksum(pi[f] * self.x[f] for f in self.F), sense=GRB.MAXIMIZE)
         # 生成目的函数
 
     def solve(self, flag=0):
@@ -64,7 +66,7 @@ class SubProblem:
         self.model.optimize()  # 求解方法
 
     def get_solution(self):
-        return [self.model.getVars()[i].x for i in self.L]
+        return [self.x[l].X for l in self.L]
         # 获取主问题中x
 
     def get_reduced_cost(self):
@@ -76,4 +78,40 @@ class SubProblem:
 
 
 if __name__ == "__main__":
+    M = 50  # 总能耗上限
+    V = ['A', 'C', 'D', 'B', 'S']
+    F = ['AB', 'AD', 'BC', 'DC']
+    m_f = [3.0, 5.0, 3.2015621187164243, 3.640054944640259]
+    G = ['SA', 'SB', 'SD', 'BS', 'CS', 'DS', 'BA', 'BD', 'CA', 'CB', 'CD', 'DA', 'DB']
+    m_g = [1.1313708498984762, 3.2984845004941286, 4.308131845707603, 3.2984845004941286, 1.4422205101855958, 4.308131845707603, 2.4000000000000004, 2.529822128134704, 1.6492422502470643, 2.5612496949731396, 2.9120439557122073, 4.0, 2.529822128134704]
+    L = F + G  # 假设 F 和 G 之间没有重复元素
+    # 流矩阵数据
+    b_vl_data = {
+        'AB': [-1, 0, 0, 1, 0],
+        'AD': [-1, 0, 1, 0, 0],
+        'BC': [0, 1, 0, -1, 0],
+        'DC': [0, 1, -1, 0, 0],
+        'SA': [1, 0, 0, 0, -1],
+        'SB': [0, 0, 0, 1, -1],
+        'SD': [0, 0, 1, 0, -1],
+        'BS': [0, 0, 0, -1, 1],
+        'CS': [0, -1, 0, 0, 1],
+        'DS': [0, 0, -1, 0, 1],
+        'BA': [1, 0, 0, -1, 0],
+        'BD': [0, 0, 1, -1, 0],
+        'CA': [1, -1, 0, 0, 0],
+        'CB': [0, -1, 0, 1, 0],
+        'CD': [0, -1, 1, 0, 0],
+        'DA': [1, 0, -1, 0, 0],
+        'DB': [0, 0, -1, 1, 0]
+    }
+    b_vl = pd.DataFrame(b_vl_data, index=V)
+
+
+    pi={'AB': 2, 'AD': 0, 'BC': 1, 'DC': 0}
+    sub_prob = SubProblem(pi, M, V, m_f, m_g, F, G, L, b_vl)
+    sub_prob.create_model()
+    sub_prob.set_objective(pi)
+    sub_prob.solve()
+    print(sub_prob.get_solution())
     pass
