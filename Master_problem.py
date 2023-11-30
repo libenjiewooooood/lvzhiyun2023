@@ -64,7 +64,16 @@ class MasterProblem:
 
     def get_dual_vars(self) -> Series:
         return [self.consts[i].getAttr(GRB.Attr.Pi) for i in range(len(self.consts))]  # 提取对偶值
+
     # TODO 返回的对偶值，形式为Series, index=F
 
     def write(self):
         self.model.write("Master Problem.lp")
+
+
+if __name__ == "__main__":
+    R = DataFrame([[9, 0, 9, 0, 1, 0, 0, 0, 1, 0],
+                   [0, 7, 0, 0, 0, 7, 0, 1, 0, 1],
+                   [5, 2, 4, 1, 0, 1, 0, 1, 1, 0]],
+                  index=range(3),
+                  columns=["AB", "DC", "BA", "BD", "BS", "CD", "CA", "CS", "SA", "SD"])
