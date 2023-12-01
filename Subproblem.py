@@ -43,8 +43,8 @@ class SubProblem:
         # 初始化子问题
         self.x = self.model.addVars(self.L, lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='x')
         # 定义整数变量x
-        battery_ct = gp.quicksum(self.m_f[self.F.index(f)] * self.x[f] for f in self.F) + \
-                     gp.quicksum(self.m_g[self.G.index(g)] * self.x[g] for g in self.G) <= self.M
+        battery_ct = gp.quicksum(self.m_f[f] * self.x[f] for f in self.F) + \
+                     gp.quicksum(self.m_g[g] * self.x[g] for g in self.G) <= self.M
         self.model.addConstr(battery_ct, name="battery_ct")
         # 电池容量约束
         # TODO 对关联矩阵b_vl加约束
