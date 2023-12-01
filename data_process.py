@@ -19,13 +19,13 @@ def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_
     F:[str] 订单集合，满载运输弧集合
     G:[str] 空载运输弧集合
     L:[str] 弧集合，L = F or G
-    d_f:Series 订单运输需求, index=F, 例如index=['AB', 'DC'] TODO
-    m_f:Series 满载运输弧的运输电量消耗, index=F TODO
-    m_g:Series 空载运输弧的运输电量消耗, index=G TODO
+    d_f:Series 订单运输需求, index=F, 例如index=['AB', 'DC'] 
+    m_f:Series 满载运输弧的运输电量消耗, index=F 
+    m_g:Series 空载运输弧的运输电量消耗, index=G
     b_vl:pd.DataFrame 关联矩阵，index=V, name=L
     # 如果有时间，增加一个路径的可视化
     """
-    df = order['weight']
+    # df = order['weight']
     s, e = set(order['start']), set(order['end'])
     V = {'S'} | s | e  # 所有结点
     # 满载路段
@@ -35,6 +35,9 @@ def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_
         p1 = location.loc[row['start']]
         p2 = location.loc[row['end']]
         m_f.append(pcost_f * coordi2distance(p1, p2))
+    m_f=pd.Series(m_f ,index=F)
+    # 订单需求
+    df=pd.Series(order['weight'] ,index=F)
     # 空载路段
     G, m_g = [], []
     for x in s:
@@ -54,6 +57,7 @@ def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_
                 p1 = location.loc[y]
                 p2 = location.loc[x]
                 m_g.append(pcost_g * coordi2distance(p1, p2))
+    m_g=pd.Series(m_g ,index=G)
     L = F + G  # 所有路段
     # b_vl 
     b_vl = pd.DataFrame(columns=L, index=V)
