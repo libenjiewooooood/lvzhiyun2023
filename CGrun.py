@@ -2,6 +2,7 @@ import pandas as pd
 from data_process import data_pre
 from Subproblem import SubProblem
 from Master_problem import MasterProblem
+from visualise import order_visualise
 
 # 输入数据
 u = 3  # 货车最大载货量
@@ -36,3 +37,4 @@ print('流矩阵b_vl',b_vl)
 #print(b_vl.iloc[1,2],b_vl.iloc[2,1])
 print(b_vl.loc['S','SA'],b_vl.loc['S','BS'])
 print(b_vl.loc['S','SA'],b_vl.loc['S','BS'])
+order_visualise(V,location,F)
