@@ -27,7 +27,7 @@ def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_
     """
     # df = order['weight']
     s, e = set(order['start']), set(order['end'])
-    V = {'S'} | s | e  # 所有结点
+    V = list({'S'} | s | e)  # 所有结点
     # 满载路段
     F, m_f = [], []
     for __, row in order.iterrows():
