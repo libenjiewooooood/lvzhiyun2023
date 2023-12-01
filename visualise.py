@@ -76,8 +76,6 @@ def route_visualise(i,R,location,F,G,):
                 code,vert=get_curve(location,r[0],r[1],r_f)            
                 codes.extend(code)
                 verts.extend(vert)
-                # 标注路段频次
-  #              note_freq(location,r[0],r[1],r_f)
         else:
             continue
     path = Path(verts, codes)
@@ -95,8 +93,8 @@ def route_visualise(i,R,location,F,G,):
         else:
             continue    
     ax.grid()
-    ax.set_xlim(-1, 6)
-    ax.set_ylim(-3, 2)
+    ax.set_xlim(min(location['x'])-1, max(location['x'])+1)
+    ax.set_ylim(min(location['y'])-1, max(location['y'])+1)
     ax.axis('equal')
     fig.suptitle(f'route {i}')
     plt.show()
