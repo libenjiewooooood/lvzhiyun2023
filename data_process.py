@@ -10,7 +10,7 @@ def coordi2distance(a, b):
 
 def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_g: float):
     """
-    :param order: 订单集合, index=['AB', 'DC']
+    :param order: 订单集合, index=['AB', 'CD']
     :param location: 运输节点集合
     :param pcost_f: 单位距离满载消耗
     :param pcost_g: 单位距离空载消耗
