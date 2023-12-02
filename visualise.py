@@ -4,7 +4,6 @@ from matplotlib import patches
 from matplotlib import path 
 from matplotlib.path import Path
 from itertools import combinations
-from data_process import coordi2distance
 
 def visualise_point(location):
     plt.scatter(location['x'],location['y'],color='k')
