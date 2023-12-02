@@ -4,6 +4,8 @@ from matplotlib import patches
 from matplotlib import path 
 from matplotlib.path import Path
 from itertools import combinations
+from matplotlib.patches import Arc
+from matplotlib.patches import FancyArrow 
 
 def visualise_point(location):
     plt.scatter(location['x'],location['y'],color='k')
@@ -89,6 +91,7 @@ def route_visualise(i,R,location,F,G,arr_len=0.1,arr_width=0.05,g_arr_col='b',f_
         if f in R.columns:
             r_f=R.iloc[i,R.columns.get_loc(f)]
             if r_f>0:
+                r=list(f)
                 arc1=elliptic_arc(location.loc[r[0]],location.loc[r[1]],arr_len=arr_len,arr_width=arr_width,arr_col=f_arr_col)
                 farc=arc1.plot_arc(ax)
                 arc1.plot_arrow(ax)
