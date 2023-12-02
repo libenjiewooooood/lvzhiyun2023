@@ -10,25 +10,44 @@ def visualise_point(location):
     plt.scatter(location['x'],location['y'],color='k')
     for row in location.iterrows():
         plt.text(row[1].loc['x']+0.1,row[1].loc['y'],row[0],color='k',fontsize='medium',fontweight='bold')
-def get_curve(location,p1,p2,f):
-    '''
-    p1,p2='A','B'
-    location dataframe 
-    '''
-    code=([Path.MOVETO,Path.CURVE3,Path.CURVE3])
-    width=coordi2distance(location.loc[p1],location.loc[p2])
-    control_point=location.loc[[p1,p2]].sum()/2+width*0.2
-    vert=tuple(location.loc[p1]),tuple(control_point),tuple(location.loc[p2])
-    plt.text(control_point['x']-width*0.1,control_point['y']-width*0.1,f,color='k',fontsize='medium',fontweight='bold')
-    return code,vert
-def note_freq(location,p1,p2,f):
-    '''
-    func:标注路段执行次数
-    
-    '''
-    control_point=location.loc[[p1,p2]].sum()/2
-    width=coordi2distance(location.loc[p1],location.loc[p2])
-    plt.text(control_point['x'],control_point['y'],f,color='k',fontsize='medium',fontweight='bold')
+
+# define arc class with arrow
+class elliptic_arc():
+    def __init__(self,p1,p2,arr_len,arr_width,arr_col,h=0.7):
+        self.p1=p1
+        self.p2=p2
+        self.center=(p1+p2)/2
+        self.width=coordi2distance(self.p1,self.p2)
+        self.h=h
+        self.arr_len=arr_len
+        self.arr_width=arr_width
+        self.arc_col=arr_col
+        self.arr_col=arr_col
+    def plot_arc(self,ax):
+        rad=self.calculate_rad(self.p1,self.p2)
+        angle=90-rad*180/math.pi
+        a=Arc(self.center,self.width,height=self.h,angle=angle,theta2=180,color=self.arc_col ,label='fullload')
+        ax.add_patch(a)        
+        return a
+    def plot_arrow(self,ax):
+        rad=self.calculate_rad(self.p1,self.p2)
+        mid=self.get_midpoint
+        arr=FancyArrow(mid[0],mid[1],self.arr_len*math.cos(rad-math.pi/2),-self.arr_len*math.sin(rad-math.pi/2),
+                       width=self.arr_width,length_includes_head=True,head_length=self.arr_len,fc=self.arr_col)
+        ax.add_patch(arr)    
+    @staticmethod
+    def coordi2distance(a, b):
+        return ((a['x'] - b['x']) ** 2 + (a['y'] - b['y']) ** 2) ** 0.5
+    @staticmethod
+    def calculate_rad(p1,p2):
+        l=list(p2-p1)
+        rad=math.atan2(l[0],l[1]) 
+        return rad
+    @property
+    def get_midpoint(self):
+        rad=self.calculate_rad(self.p1,self.p2)
+        mid=[self.center[0]+self.h/2*math.sin(rad-math.pi/2),self.center[1]+self.h/2*math.cos(rad-math.pi/2)]
+        return mid
 
 def order_visualise(V,location,F):
 '''
@@ -54,7 +73,7 @@ input：
     plt.show()
 
 # 可视化某条路线
-def route_visualise(i,R,location,F,G,):
+def route_visualise(i,R,location,F,G,arr_len=0.1,arr_width=0.05,g_arr_col='b',f_arr_col='r'):
   '''
   func:可视化路线
   input：
@@ -66,30 +85,33 @@ def route_visualise(i,R,location,F,G,):
     fig, ax = plt.subplots()
     # 绘制结点
     visualise_point(location)
-    codes,verts=[],[]
     # 满载
     for f in F: 
         if f in R.columns:
             r_f=R.iloc[i,R.columns.get_loc(f)]
             if r_f>0:
-                r=list(f)
-                code,vert=get_curve(location,r[0],r[1],r_f)            
-                codes.extend(code)
-                verts.extend(vert)
+                arc1=elliptic_arc(location.loc[r[0]],location.loc[r[1]],arr_len=arr_len,arr_width=arr_width,arr_col=f_arr_col)
+                farc=arc1.plot_arc(ax)
+                arc1.plot_arrow(ax)
+                # 标注路段频次
+                note_p=arc1.get_midpoint
+                plt.text(note_p[0]+0.1,note_p[1],r_f,color='k',fontsize='medium',fontweight='bold')
         else:
             continue
-    path = Path(verts, codes)
-    patch = patches.PathPatch(path, ec='r',facecolor='none',linewidth=2)
-    ax.add_patch(patch)
     # 空载路段
     for g in G:
         if g in R.columns:
             r_g=R.iloc[i,R.columns.get_loc(g)]
             if r_g>0:
                 r=list(g)
-                plt.arrow(location.loc[r[0],'x'],location.loc[r[0],'y'],location.loc[r[1],'x']-location.loc[r[0],'x'],
-                  location.loc[r[1],'y']-location.loc[r[0],'y'],length_includes_head=True,width=0.01,head_width=0.1)
-                note_freq(location,r[0],r[1],r_g)
+                gline=plt.plot(location.loc[[r[0],r[1]],'x'],location.loc[[r[0],r[1]],'y'],c='b',label='unload')
+                mid=location.loc[[r[0],r[1]]].sum()/2
+                l=list(location.loc[r[1]]-location.loc[r[0]])
+                rad=math.atan2(l[0],l[1]) 
+                arr=FancyArrow(mid[0],mid[1],arr_len*math.cos(rad-math.pi/2),-arr_len*math.sin(rad-math.pi/2),
+                       width=arr_width,length_includes_head=True,head_length=arr_len,fc=g_arr_col)
+                ax.add_patch(arr)
+                plt.text(mid[0]+0.1,mid[1],r_g,color='k',fontsize='medium',fontweight='bold')
         else:
             continue    
     ax.grid()
