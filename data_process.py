@@ -37,7 +37,7 @@ def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_
         m_f.append(pcost_f * coordi2distance(p1, p2))
     m_f = pd.Series(m_f, index=F)
     # 订单需求
-    df = pd.Series(order['weight'], index=F)
+    df = pd.Series(list(order['weight']), index=F)
     # 空载路段
     G, m_g = [], []
     for x in s:

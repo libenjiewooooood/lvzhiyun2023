@@ -64,10 +64,11 @@ class SubProblem:
         self.model.optimize()  # 求解方法
 
     def get_solution(self):
-        return [self.x[l].X for l in self.L]
+        return [int(self.x[l].X) for l in self.L]
         # 获取主问题中x
 
-    def get_reduced_cost(self):
+    @property
+    def get_obj(self):
         return self.model.ObjVal
         # 返回目标函数值
 

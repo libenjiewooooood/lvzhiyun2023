@@ -37,14 +37,17 @@ class MasterProblem:
         self.y_r = None
         self.consts = None
 
-    def create_model(self):
+    def create_model(self, relaxation=True):
         self.model = gp.Model("Master Problem")
-        self.y_r = self.model.addVars(len(R), lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='y_r')
+        if relaxation:
+            self.y_r = self.model.addVars(len(self.R), lb=0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='y_r')
+        else:
+            self.y_r = self.model.addVars(len(self.R), lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='y_r')
         # 定义整数变量y_r
         for arc in self.R.columns:
             if arc in self.F:
                 col: pd.Series = self.R[arc]
-                cont = gp.quicksum(self.y_r[i] * col[i] for i in range(len(self.R))) >= self.d_f[arc]/mu
+                cont = gp.quicksum(self.y_r[i] * col[i] for i in range(len(self.R))) >= self.d_f[arc]/self.mu
                 self.model.addConstr(cont, name=arc)
         # 订单需求约束
 
@@ -61,7 +64,6 @@ class MasterProblem:
         pi = [con.Pi for con in self.consts]
         ct_name = [con.ConstrName for con in self.consts]
         return Series(pi, index=ct_name)  # 提取对偶值
-    # TODO 返回的对偶值，形式为Series, index=F
 
     @property
     def opt(self):
