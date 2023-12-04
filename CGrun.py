@@ -8,8 +8,8 @@ from visualise import order_visualise
 u = 3  # 货车最大载货量
 m = 100  # 最大电容量
 # 订单
-order = pd.DataFrame([['A', 'B', 10],
-                      ['C', 'D', 14]], columns=['start', 'end', 'weight'])
+order = pd.DataFrame([['A', 'B', 20],
+                      ['C', 'D', 24]], columns=['start', 'end', 'weight'])
 # 货运节点
 location = pd.DataFrame([[0, 0],
                          [1, 1],
@@ -21,20 +21,19 @@ pcost_f, pcost_g = 2, 1.2  # 单位距离满载, 空载耗能
 
 df, V, F, m_f, G, m_g, L, h_gs, b_vl = data_pre(order, location, pcost_f, pcost_g)
 
-
-print('所有节点V：',V)
-print('所有路段L：',L)
-#print(L.index('BC'))
-#for x in G:
+print('所有节点V：', V)
+print('所有路段L：', L)
+# print(L.index('BC'))
+# for x in G:
 #    print(L.index(x))
-print('满载路段F：',F)
-print('满载消耗m_f：',m_f)
-#print(m_f[2])
-print('空载路段G：',G)
-#print(G[1])
-print('空载消耗m_f：',m_g)
-print('流矩阵b_vl',b_vl)
-#print(b_vl.iloc[1,2],b_vl.iloc[2,1])
-print(b_vl.loc['S','SA'],b_vl.loc['S','BS'])
-print(b_vl.loc['S','SA'],b_vl.loc['S','BS'])
-order_visualise(V,location,F)
+print('满载路段F：', F)
+print('满载消耗m_f：\n', m_f)
+# print(m_f[2])
+print('空载路段G：', G)
+# print(G[1])
+print('空载消耗m_g：\n', m_g)
+print('关联矩阵b_vl：\n', b_vl)
+# print(b_vl.iloc[1,2],b_vl.iloc[2,1])
+print(b_vl.loc['S', 'SA'], b_vl.loc['S', 'BS'])
+# print(b_vl.loc['S', 'SA'], b_vl.loc['S', 'BS'])
+order_visualise(V, location, F)

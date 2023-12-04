@@ -74,6 +74,6 @@ class MasterProblem:
 if __name__ == "__main__":
     R = DataFrame([[9, 0, 9, 0, 1, 0, 0, 0, 1, 0],
                    [0, 7, 0, 0, 0, 7, 0, 1, 0, 1],
-                   [5, 2, 4, 1, 0, 1, 0, 1, 1, 0]],
+                   [5, 2, 4, 1, 0, 1, 0, 1, 1, 0]],  
                   index=range(3),
                   columns=["AB", "DC", "BA", "BD", "BS", "CD", "CA", "CS", "SA", "SD"])

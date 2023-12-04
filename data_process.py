@@ -35,9 +35,9 @@ def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_
         p1 = location.loc[row['start']]
         p2 = location.loc[row['end']]
         m_f.append(pcost_f * coordi2distance(p1, p2))
-    m_f=pd.Series(m_f ,index=F)
+    m_f = pd.Series(m_f, index=F)
     # 订单需求
-    df=pd.Series(order['weight'] ,index=F)
+    df = pd.Series(order['weight'], index=F)
     # 空载路段
     G, m_g = [], []
     for x in s:
@@ -57,7 +57,7 @@ def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_
                 p1 = location.loc[y]
                 p2 = location.loc[x]
                 m_g.append(pcost_g * coordi2distance(p1, p2))
-    m_g=pd.Series(m_g ,index=G)
+    m_g = pd.Series(m_g, index=G)
     L = F + G  # 所有路段
     # b_vl 
     b_vl = pd.DataFrame(columns=L, index=V)
