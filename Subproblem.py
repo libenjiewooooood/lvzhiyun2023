@@ -5,6 +5,7 @@ from gurobipy import GRB
 from pandas import Series, DataFrame
 
 
+
 class SubProblem:
     def __init__(self, pi: Series, M: float, V: set or list[str], m_f: Series, m_g: Series,
                  F: set or list[str], G: set or list[str], L: set or list[str], b_vl: DataFrame) -> None:
@@ -74,25 +75,25 @@ class SubProblem:
                 break
 
             graph = self.subtourck()
-            check = has_subtour(graph, "S")
+            check = has_subtour(graph,"S")
 
             if not check:
                 break  # 如果没有子回路，退出循环
 
-            solution_values = self.get_solution()
+            solution_values = [self.x[l].X for l in self.L]
             solution_dict = dict(zip(self.L, solution_values))
 
-            constraint_expr = gp.quicksum(solution_dict[l] * self.x[l] for l in self.L)
+            constraint_expr = gp.quicksum( self.x[l] for l in self.L)
             total_value = sum(solution_dict[l] for l in self.L) - 1
             self.model.addConstr(constraint_expr <= total_value)
-            # 有子回路则添加约束舍去这个路线
+            #有子回路则添加约束舍去这个路线
             self.model.update()  # 更新模型
 
         if self.model.Status == gp.GRB.OPTIMAL:
-            print("Solution:", self.get_solution())
+            print("Solution:", [self.x[l].X for l in self.L])
         else:
             print("No optimal solution found.")
-
+            
     def get_solution(self):
         return [int(self.x[l].X) for l in self.L]
         # 获取主问题中x
@@ -105,7 +106,8 @@ class SubProblem:
     def write(self):
         self.model.write("sub_model.lp")
 
-    # 生成路线图的简化版
+
+    #生成路线图的简化版
     def subtourck(self):
         my_x = self.get_solution()
         # 提取大于0的路径
@@ -119,9 +121,9 @@ class SubProblem:
             i, j = nodes.index(path[0]), nodes.index(path[1])
             graph_mat[i, j] = 1
         # 创建 DataFrame
-        graph_df = pd.DataFrame(graph_mat, index=nodes, columns=nodes, dtype=int)
+        graph_df = pd.DataFrame(graph_mat, index=nodes, columns=nodes , dtype=int)
         return graph_df
-
+    
     # def subtour_elimination(self, where):
     #     if where == gp.GRB.Callback.MIPSOL:
     #         # 使用 cbGetSolution 获取当前解决方案
@@ -146,7 +148,7 @@ class SubProblem:
     #     self.model.optimize(self.subtour_elimination)
 
 
-# 判断是否有子回路
+#判断是否有子回路
 def has_subtour(graph, start_node):
     def dfs(node, visited):
         visited.add(node)
@@ -162,6 +164,10 @@ def has_subtour(graph, start_node):
     all_visited = all(node in visited for node in graph if node != start_node)
     return not all_visited
 
+  
+
+
+
 
 if __name__ == "__main__":
     M = 50  # 总能耗上限
@@ -169,31 +175,32 @@ if __name__ == "__main__":
     F = ['AB', 'CD']
     m_f = pd.Series({'AB': 6.00000, 'CD': 7.28011})
     G = ['SA', 'SC', 'DS', 'BS', 'DA', 'DC', 'BA', 'BC']
-    m_g = pd.Series({'SA': 1.697056, 'SC': 2.163331, 'DS': 6.462198, 'BS': 4.947727,
-                     'DA': 6.000000, 'DC': 4.368066, 'BA': 3.600000, 'BC': 3.841875})
+    m_g = pd.Series({'SA': 1.697056, 'SC': 2.163331, 'DS': 6.462198, 'BS': 4.947727, 
+                'DA': 6.000000, 'DC': 4.368066, 'BA': 3.600000, 'BC': 3.841875})
     L = F + G  # 假设 F 和 G 之间没有重复元素
-    # 流矩阵数据
+    #流矩阵数据
     b_vl_data = {
-        'AB': [-1, 1, 0, 0, 0],
-        'CD': [0, 0, 1, 0, -1],
-        'SA': [1, 0, 0, -1, 0],
-        'SC': [0, 0, 0, -1, 1],
-        'DS': [0, 0, -1, 1, 0],
-        'BS': [0, -1, 0, 1, 0],
-        'DA': [1, 0, -1, 0, 0],
-        'DC': [0, 0, -1, 0, 1],
-        'BA': [1, -1, 0, 0, 0],
-        'BC': [0, -1, 0, 0, 1]
+       'AB': [-1, 1, 0, 0, 0],
+       'CD': [0, 0, 1, 0, -1],
+       'SA': [1, 0, 0, -1, 0],
+       'SC': [0, 0, 0, -1, 1],
+       'DS': [0, 0, -1, 1, 0],
+       'BS': [0, -1, 0, 1, 0],
+       'DA': [1, 0, -1, 0, 0],
+       'DC': [0, 0, -1, 0, 1],
+       'BA': [1, -1, 0, 0, 0],
+       'BC': [0, -1, 0, 0, 1]
     }
     b_vl = pd.DataFrame(b_vl_data, index=V)
-    pi = {'AB': 0.35, 'CD': 0.225}
+    pi={'AB': 0.1, 'CD': 0.125}
     sub_prob = SubProblem(pi, M, V, m_f, m_g, F, G, L, b_vl)
     sub_prob.create_model()
     sub_prob.set_objective(pi)
     sub_prob.solve()
     print(L)
-    print("solotion", sub_prob.get_solution())
-    graph = sub_prob.subtourck()
+    print("solotion" ,sub_prob.get_solution())
+    graph=sub_prob.subtourck()
     print(graph)
-    print(has_subtour(graph, "S"))
+    print(has_subtour(graph,"S"))
 
+    pass
