@@ -10,6 +10,7 @@ mu = 3  # 货车最大载货量
 m = 100  # 最大电容量
 # 订单
 order = pd.DataFrame([['A', 'B', 20],
+                      ['A', 'D', 30],
                       ['C', 'D', 24]], columns=['start', 'end', 'weight'])
 # 货运节点
 location = pd.DataFrame([[0, 0],
@@ -41,9 +42,14 @@ order_visualise(V, location, F)
 
 # %% 开始求解
 # 初始化解
-R = pd.DataFrame([[1, 0, 0, 1, 0, 1, 0, 0, 0, 0],
-                 [0, 1, 1, 0, 0, 1, 0, 0, 0, 0]],
-                 columns=L)
+
+R = pd.DataFrame([[0] * len(L) for _ in range(len(F))], columns=L)
+for i in range(len(order)):
+    laden_sect: str = F[i]
+    idle_sect_0 = 'S' + laden_sect[0]
+    idle_sect_1 = laden_sect[1] + 'S'
+    R.loc[i, [laden_sect, idle_sect_0, idle_sect_1]] = 1
+
 iter_num = 0
 while True:
     quit_loop = False
@@ -60,7 +66,7 @@ while True:
     sub_prob.set_objective(pi)
     sub_prob.solve()
     # print(L)
-    if sub_prob.get_obj*mu <= 1:
+    if sub_prob.get_obj * mu <= 1:
         quit_loop = True
     else:
         new_route = sub_prob.get_solution()
@@ -78,7 +84,13 @@ while True:
         mp.create_model(relaxation=False)
         mp.set_objective()
         mp.solve()
+        sol = mp.solution
         print("SOLVE DONE.")
         print(f"OPT={mp.opt}")
-        print(f"SOLUTION={mp.solution}")
+        print(f"SOLUTION={sol}")
+        solution_info = {i: v for i, v in enumerate(sol) if sol[i] > 0}
+        print("Route Info:")
+        print(R.iloc[list(solution_info.keys()), :])
+        print("Solution Info:")
+        print(pd.Series(solution_info))
         break

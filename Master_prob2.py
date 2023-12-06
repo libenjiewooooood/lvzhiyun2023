@@ -71,7 +71,7 @@ class MasterProblem:
 
     @property
     def solution(self):
-        return [self.y_r[i].X for i in range(len(self.R))]
+        return [int(self.y_r[i].X) for i in range(len(self.R))]
 
     # def write(self):
     #     self.model.write("Master Problem.lp")
