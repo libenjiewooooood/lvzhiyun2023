@@ -3,6 +3,8 @@ import gurobipy as gp
 import pandas as pd
 from gurobipy import GRB
 from pandas import Series, DataFrame
+from visualise import route_visualise
+from data_process import data_pre
 
 
 
@@ -60,40 +62,13 @@ class SubProblem:
         # 生成目的函数
 
     def solve(self, flag=0):
-        self.model.Params.OutputFlag = flag
-        # self.model.optimize()
+        # set lazy constraints 
+        self.model._vars = self.x
+        self.model._L = self.L
+        self.model._nodenum = len(self.V)
+        self.model.Params.lazyConstraints = 1
+        self.model.optimize(subtourelim)
 
-        # graph = self.subtourck()
-        # check = has_subtour(graph,"S")
-
-        while True:
-            self.model.optimize()
-
-            # 检查模型是否成功优化
-            if self.model.Status != gp.GRB.OPTIMAL:
-                print("Optimization was not successful.")
-                break
-
-            graph = self.subtourck()
-            check = has_subtour(graph,"S")
-
-            if not check:
-                break  # 如果没有子回路，退出循环
-
-            solution_values = [self.x[l].X for l in self.L]
-            solution_dict = dict(zip(self.L, solution_values))
-
-            constraint_expr = gp.quicksum((1 if solution_dict[l] > 0 else 0) * self.x[l] for l in self.L)
-            total_value = sum(solution_dict[l] for l in self.L) - 1
-            self.model.addConstr(constraint_expr <= total_value)
-            #有子回路则添加约束舍去这个路线
-            self.model.update()  # 更新模型
-
-        if self.model.Status == gp.GRB.OPTIMAL:
-            print("Solution:", [self.x[l].X for l in self.L])
-        else:
-            print("No optimal solution found.")
-            
     def get_solution(self):
         return [int(self.x[l].X) for l in self.L]
         # 获取主问题中x
@@ -107,22 +82,22 @@ class SubProblem:
         self.model.write("sub_model.lp")
 
 
-    #生成路线图的简化版
-    def subtourck(self):
-        my_x = self.get_solution()
-        # 提取大于0的路径
-        active_paths = [l for l, x in zip(self.L, my_x) if x > 0]
-        # 提取节点
-        nodes = sorted(set("".join(active_paths)))
-        # 创建一个初始为零的矩阵
-        graph_mat = np.zeros((len(nodes), len(nodes)))
-        # 为每个活跃路径设置值为1
-        for path in active_paths:
-            i, j = nodes.index(path[0]), nodes.index(path[1])
-            graph_mat[i, j] = 1
-        # 创建 DataFrame
-        graph_df = pd.DataFrame(graph_mat, index=nodes, columns=nodes , dtype=int)
-        return graph_df
+    # #生成路线图的简化版
+    # def subtourck(self):
+    #     my_x = self.get_solution()
+    #     # 提取大于0的路径
+    #     active_paths = [l for l, x in zip(self.L, my_x) if x > 0]
+    #     # 提取节点
+    #     nodes = sorted(set("".join(active_paths)))
+    #     # 创建一个初始为零的矩阵
+    #     graph_mat = np.zeros((len(nodes), len(nodes)))
+    #     # 为每个活跃路径设置值为1
+    #     for path in active_paths:
+    #         i, j = nodes.index(path[0]), nodes.index(path[1])
+    #         graph_mat[i, j] = 1
+    #     # 创建 DataFrame
+    #     graph_df = pd.DataFrame(graph_mat, index=nodes, columns=nodes , dtype=int)
+    #     return graph_df
     
     # def subtour_elimination(self, where):
     #     if where == gp.GRB.Callback.MIPSOL:
@@ -163,44 +138,51 @@ def has_subtour(graph, start_node):
     # 检查是否所有非起始节点都被访问过
     all_visited = all(node in visited for node in graph if node != start_node)
     return not all_visited
+# 简化拓扑图
+def subtourck(my_x):
+    # 提取大于0的路径
+    active_paths = [item for item in  my_x if my_x[item] > 0]
+    # 提取节点
+    nodes = sorted(set("".join(active_paths)))
+    # 创建一个初始为零的矩阵
+    graph_mat = np.zeros((len(nodes), len(nodes)))
+    # 为每个活跃路径设置值为1
+    for path in active_paths:
+        i, j = nodes.index(path[0]), nodes.index(path[1])
+        graph_mat[i, j] = 1
+    # 创建 DataFrame
+    graph_df = pd.DataFrame(graph_mat, index=nodes, columns=nodes , dtype=int)
+    return graph_df
+# callback
+def subtourelim(model, where): 
+    if(where == GRB.Callback.MIPSOL): 
+        # make a list of edges selected in the solution
+        solution_values = model.cbGetSolution(model._vars)
+        graph = subtourck(solution_values)
+        check = has_subtour(graph,"S")      
+        if check:
+            print("---add sub tour elimination constraint--")
 
-  
-
-
-
+            constraint_expr = gp.quicksum(model._vars[l] for l,x in solution_values if x>0 )
+            # add subtour elimination constraint 
+            model.cbLazy(constraint_expr <= sum(solution_dict.values()) - 1)
 
 if __name__ == "__main__":
     M = 50  # 总能耗上限
-    V = ['A', 'B', 'D', 'S', 'C']
-    F = ['AB', 'CD']
-    m_f = pd.Series({'AB': 6.00000, 'CD': 7.28011})
-    G = ['SA', 'SC', 'DS', 'BS', 'DA', 'DC', 'BA', 'BC']
-    m_g = pd.Series({'SA': 1.697056, 'SC': 2.163331, 'DS': 6.462198, 'BS': 4.947727, 
-                'DA': 6.000000, 'DC': 4.368066, 'BA': 3.600000, 'BC': 3.841875})
-    L = F + G  # 假设 F 和 G 之间没有重复元素
-    #流矩阵数据
-    b_vl_data = {
-       'AB': [-1, 1, 0, 0, 0],
-       'CD': [0, 0, 1, 0, -1],
-       'SA': [1, 0, 0, -1, 0],
-       'SC': [0, 0, 0, -1, 1],
-       'DS': [0, 0, -1, 1, 0],
-       'BS': [0, -1, 0, 1, 0],
-       'DA': [1, 0, -1, 0, 0],
-       'DC': [0, 0, -1, 0, 1],
-       'BA': [1, -1, 0, 0, 0],
-       'BC': [0, -1, 0, 0, 1]
-    }
-    b_vl = pd.DataFrame(b_vl_data, index=V)
-    pi={'AB': 0.1, 'CD': 0.125}
+    order=pd.DataFrame([['A','B',10],['A','D',8],['B','C',13],['D','C',4]],columns=['start','end','weight'])
+    location=pd.DataFrame([[0,0],[1,1],[4,1],[1.5,-1],[5,-2]],index=['S','A','B','C','D'],columns=['x','y'])
+    pcost_f,pcost_g=1,0.8 # 单位距离满载/空载耗能
+    _,V, F, m_f, G, m_g, L, h_gs, b_vl=data_pre(order, location, pcost_f, pcost_g)
+#  get from RMP RC
+    pi={'AB': 2, 'AD':3,'BC':0.5,'DC': 1} 
     sub_prob = SubProblem(pi, M, V, m_f, m_g, F, G, L, b_vl)
     sub_prob.create_model()
     sub_prob.set_objective(pi)
     sub_prob.solve()
     print(L)
-    print("solotion" ,sub_prob.get_solution())
-    graph=sub_prob.subtourck()
-    print(graph)
-    print(has_subtour(graph,"S"))
-
+    #  这里添加到主问题R中要注意 格式要改成一行 这里是一列
+    print(sub_prob.get_solution())
+ # 可视化生成的路线，可判断一下子回路判断及消除逻辑是否正确
+#     RI=pd.DataFrame([sub_prob.get_solution()],columns=L)
+#     route_visualise(0,RI,location,F,G)
     pass
