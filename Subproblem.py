@@ -83,7 +83,7 @@ class SubProblem:
             solution_values = [self.x[l].X for l in self.L]
             solution_dict = dict(zip(self.L, solution_values))
 
-            constraint_expr = gp.quicksum( self.x[l] for l in self.L)
+            constraint_expr = gp.quicksum((1 if solution_dict[l] > 0 else 0) * self.x[l] for l in self.L)
             total_value = sum(solution_dict[l] for l in self.L) - 1
             self.model.addConstr(constraint_expr <= total_value)
             #有子回路则添加约束舍去这个路线
