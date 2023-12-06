@@ -10,7 +10,6 @@ mu = 3  # 货车最大载货量
 m = 100  # 最大电容量
 # 订单
 order = pd.DataFrame([['A', 'B', 20],
-                      ['A', 'D', 30],
                       ['C', 'D', 24]], columns=['start', 'end', 'weight'])
 # 货运节点
 location = pd.DataFrame([[0, 0],
