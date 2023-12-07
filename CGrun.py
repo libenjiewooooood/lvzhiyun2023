@@ -49,7 +49,7 @@ for i in range(len(order)):
     idle_sect_1 = laden_sect[1] + 'S'
     R.loc[i, [laden_sect, idle_sect_0, idle_sect_1]] = 1
 
-iter_num = 0
+iter_num = 1
 while True:
     quit_loop = False
     # 求解主问题
@@ -75,7 +75,7 @@ while True:
             print(pd.Series(new_route, index=L))
             R.loc[len(R.index)] = new_route
         else:
-            print("Route repeat")
+            print("Route repeat.")
             quit_loop = True
     iter_num += 1
     if quit_loop:

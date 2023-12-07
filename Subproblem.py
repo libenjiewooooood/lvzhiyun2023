@@ -7,7 +7,6 @@ from visualise import route_visualise
 from data_process import data_pre
 
 
-
 class SubProblem:
     def __init__(self, pi: Series, M: float, V: set or list[str], m_f: Series, m_g: Series,
                  F: set or list[str], G: set or list[str], L: set or list[str], b_vl: DataFrame) -> None:
@@ -81,7 +80,6 @@ class SubProblem:
     def write(self):
         self.model.write("sub_model.lp")
 
-
     # #生成路线图的简化版
     # def subtourck(self):
     #     my_x = self.get_solution()
@@ -98,7 +96,7 @@ class SubProblem:
     #     # 创建 DataFrame
     #     graph_df = pd.DataFrame(graph_mat, index=nodes, columns=nodes , dtype=int)
     #     return graph_df
-    
+
     # def subtour_elimination(self, where):
     #     if where == gp.GRB.Callback.MIPSOL:
     #         # 使用 cbGetSolution 获取当前解决方案
@@ -123,7 +121,7 @@ class SubProblem:
     #     self.model.optimize(self.subtour_elimination)
 
 
-#判断是否有子回路
+# 判断是否有子回路
 def has_subtour(graph, start_node):
     def dfs(node, visited):
         visited.add(node)
@@ -138,10 +136,12 @@ def has_subtour(graph, start_node):
     # 检查是否所有非起始节点都被访问过
     all_visited = all(node in visited for node in graph if node != start_node)
     return not all_visited
+
+
 # 简化拓扑图
 def subtourck(my_x):
     # 提取大于0的路径
-    active_paths = [item for item in  my_x if my_x[item] > 0]
+    active_paths = [item for item in my_x if my_x[item] > 0]
     # 提取节点
     nodes = sorted(set("".join(active_paths)))
     # 创建一个初始为零的矩阵
@@ -151,30 +151,35 @@ def subtourck(my_x):
         i, j = nodes.index(path[0]), nodes.index(path[1])
         graph_mat[i, j] = 1
     # 创建 DataFrame
-    graph_df = pd.DataFrame(graph_mat, index=nodes, columns=nodes , dtype=int)
+    graph_df = pd.DataFrame(graph_mat, index=nodes, columns=nodes, dtype=int)
     return graph_df
+
+
 # callback
-def subtourelim(model, where): 
-    if(where == GRB.Callback.MIPSOL): 
+def subtourelim(model, where):
+    if (where == GRB.Callback.MIPSOL):
         # make a list of edges selected in the solution
         solution_values = model.cbGetSolution(model._vars)
         graph = subtourck(solution_values)
-        check = has_subtour(graph,"S")      
+        check = has_subtour(graph, "S")
         if check:
             print("---add sub tour elimination constraint--")
 
-            constraint_expr = gp.quicksum(model._vars[l] for l,x in solution_values if x>0 )
+            constraint_expr = gp.quicksum(model._vars[l] for l, x in solution_values if x > 0)
             # add subtour elimination constraint 
             model.cbLazy(constraint_expr <= sum(solution_dict.values()) - 1)
 
+
 if __name__ == "__main__":
     M = 50  # 总能耗上限
-    order=pd.DataFrame([['A','B',10],['A','D',8],['B','C',13],['D','C',4]],columns=['start','end','weight'])
-    location=pd.DataFrame([[0,0],[1,1],[4,1],[1.5,-1],[5,-2]],index=['S','A','B','C','D'],columns=['x','y'])
-    pcost_f,pcost_g=1,0.8 # 单位距离满载/空载耗能
-    _,V, F, m_f, G, m_g, L, h_gs, b_vl=data_pre(order, location, pcost_f, pcost_g)
-#  get from RMP RC
-    pi={'AB': 2, 'AD':3,'BC':0.5,'DC': 1} 
+    order = pd.DataFrame([['A', 'B', 10], ['A', 'D', 8], ['B', 'C', 13], ['D', 'C', 4]],
+                         columns=['start', 'end', 'weight'])
+    location = pd.DataFrame([[0, 0], [1, 1], [4, 1], [1.5, -1], [5, -2]], index=['S', 'A', 'B', 'C', 'D'],
+                            columns=['x', 'y'])
+    pcost_f, pcost_g = 1, 0.8  # 单位距离满载/空载耗能
+    _, V, F, m_f, G, m_g, L, h_gs, b_vl = data_pre(order, location, pcost_f, pcost_g)
+    #  get from RMP RC
+    pi = {'AB': 2, 'AD': 3, 'BC': 0.5, 'DC': 1}
     sub_prob = SubProblem(pi, M, V, m_f, m_g, F, G, L, b_vl)
     sub_prob.create_model()
     sub_prob.set_objective(pi)
@@ -182,7 +187,7 @@ if __name__ == "__main__":
     print(L)
     #  这里添加到主问题R中要注意 格式要改成一行 这里是一列
     print(sub_prob.get_solution())
- # 可视化生成的路线，可判断一下子回路判断及消除逻辑是否正确
-#     RI=pd.DataFrame([sub_prob.get_solution()],columns=L)
-#     route_visualise(0,RI,location,F,G)
+    # 可视化生成的路线，可判断一下子回路判断及消除逻辑是否正确
+    #     RI=pd.DataFrame([sub_prob.get_solution()],columns=L)
+    #     route_visualise(0,RI,location,F,G)
     pass
