@@ -165,9 +165,9 @@ def subtourelim(model, where):
         if check:
             print("---add sub tour elimination constraint--")
 
-            constraint_expr = gp.quicksum(model._vars[l] for l, x in solution_values if x > 0)
+            constraint_expr = gp.quicksum(model._vars[x] for x in solution_values if solution_values[x] > 0)
             # add subtour elimination constraint 
-            model.cbLazy(constraint_expr <= sum(solution_dict.values()) - 1)
+            model.cbLazy(constraint_expr <= sum(solution_values.values()) - 1)
 
 
 if __name__ == "__main__":
@@ -180,6 +180,7 @@ if __name__ == "__main__":
     _, V, F, m_f, G, m_g, L, h_gs, b_vl = data_pre(order, location, pcost_f, pcost_g)
     #  get from RMP RC
     pi = {'AB': 2, 'AD': 3, 'BC': 0.5, 'DC': 1}
+    pi=Series(pi)
     sub_prob = SubProblem(pi, M, V, m_f, m_g, F, G, L, b_vl)
     sub_prob.create_model()
     sub_prob.set_objective(pi)
