@@ -3,7 +3,8 @@ import pandas as pd
 from data_process import data_pre
 from Subproblem import SubProblem
 from Master_prob2 import MasterProblem
-from visualise import order_visualise
+import visualise
+import matplotlib.pyplot as plt
 
 # 输入数据
 mu = 3  # 货车最大载货量
@@ -40,7 +41,7 @@ print('关联矩阵b_vl：\n', b_vl)
 # print(b_vl.iloc[1,2],b_vl.iloc[2,1])
 print(b_vl.loc['S', 'SA'], b_vl.loc['S', 'BS'])
 # print(b_vl.loc['S', 'SA'], b_vl.loc['S', 'BS'])
-order_visualise(V, location, F)
+visualise.order_visualise(V, location, F)
 
 # %% 开始求解
 # 初始化解
@@ -97,4 +98,7 @@ while True:
         print(pd.Series(solution_info))
         print("Order Info:")
         print(order)
+        for i in solution_info.keys():
+            visualise.route_visualise(i,R,location,F,G)
+        plt.show()
         break
