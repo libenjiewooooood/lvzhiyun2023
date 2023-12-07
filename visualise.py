@@ -1,11 +1,9 @@
 import matplotlib.pyplot as plt
 import math
-from matplotlib import patches
-from matplotlib import path
-from matplotlib.path import Path
 from itertools import combinations
 from matplotlib.patches import Arc
 from matplotlib.patches import FancyArrow
+from data_process import coordi2distance
 
 
 def visualise_point(location):
