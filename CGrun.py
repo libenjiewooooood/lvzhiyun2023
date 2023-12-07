@@ -7,17 +7,20 @@ from visualise import order_visualise
 
 # 输入数据
 mu = 3  # 货车最大载货量
-m = 100  # 最大电容量
+m = 100  # 最大电容量s
 # 订单
 order = pd.DataFrame([['A', 'B', 20],
-                      ['C', 'D', 24]], columns=['start', 'end', 'weight'])
+                      ['D', 'C', 30],
+                      ['E', 'F', 40]], columns=['start', 'end', 'weight'])
 # 货运节点
 location = pd.DataFrame([[0, 0],
-                         [1, 1],
-                         [4, 1],
+                         [1, 3],
+                         [1.5, 1.5],
+                         [-2.5, 3],
+                         [0, 2],
                          [1.5, -1],
-                         [5, -2]],
-                        index=['S', 'A', 'B', 'C', 'D'], columns=['x', 'y'])
+                         [3, -2]],
+                        index=['S', 'A', 'B', 'C', 'D', 'E', 'F'], columns=['x', 'y'])
 pcost_f, pcost_g = 2, 1.2  # 单位距离满载, 空载耗能
 
 df, V, F, m_f, G, m_g, L, h_gs, b_vl = data_pre(order, location, pcost_f, pcost_g)
@@ -92,4 +95,6 @@ while True:
         print(R.iloc[list(solution_info.keys()), :])
         print("Solution Info:")
         print(pd.Series(solution_info))
+        print("Order Info:")
+        print(order)
         break
