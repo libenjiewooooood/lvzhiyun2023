@@ -64,7 +64,6 @@ class SubProblem:
         # set lazy constraints 
         self.model._vars = self.x
         self.model._L = self.L
-        self.model._nodenum = len(self.V)
         self.model.Params.lazyConstraints = 1
         self.model.optimize(subtourelim)
 
