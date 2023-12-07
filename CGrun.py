@@ -99,8 +99,10 @@ while True:
         print(pd.Series(solution_info))
         print("Order Info:")
         print(order)
+        # 最终解可视化
+        for i in solution_info.keys():
+            route_visualise(i, R, location, F, G)
+        plt.show()
         break
 
-# 最终解可视化
-for i in solution_info.keys():
-    route_visualise(i, R, location, F, G)
+
