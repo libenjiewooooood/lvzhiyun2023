@@ -3,7 +3,7 @@ import pandas as pd
 from data_process import data_pre
 from Subproblem import SubProblem
 from Master_prob2 import MasterProblem
-from visualise import order_visualise
+from visualise import order_visualise, route_visualise
 
 # 输入数据
 mu = 3  # 货车最大载货量
@@ -18,7 +18,7 @@ location = pd.DataFrame([[0, 0],
                          [1.5, 1.5],
                          [-2.5, 3],
                          [0, 2],
-                         [1.5, -1],
+                         [1, -1],
                          [3, -2]],
                         index=['S', 'A', 'B', 'C', 'D', 'E', 'F'], columns=['x', 'y'])
 pcost_f, pcost_g = 2, 1.2  # 单位距离满载, 空载耗能
@@ -31,12 +31,14 @@ print('所有路段L：', L)
 # for x in G:
 #    print(L.index(x))
 print('满载路段F：', F)
-print('满载消耗m_f：\n', m_f)
+print('满载消耗m_f：')
+print(m_f)
 # print(m_f[2])
 print('空载路段G：', G)
 # print(G[1])
-print('空载消耗m_g：\n', m_g)
-print('关联矩阵b_vl：\n', b_vl)
+print('空载消耗m_g：')
+print(m_g)
+# print('关联矩阵b_vl：\n', b_vl)
 # print(b_vl.iloc[1,2],b_vl.iloc[2,1])
 print(b_vl.loc['S', 'SA'], b_vl.loc['S', 'BS'])
 # print(b_vl.loc['S', 'SA'], b_vl.loc['S', 'BS'])
@@ -98,3 +100,7 @@ while True:
         print("Order Info:")
         print(order)
         break
+
+# 最终解可视化
+for i in solution_info.keys():
+    route_visualise(i, R, location, F, G)
