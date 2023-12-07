@@ -72,8 +72,12 @@ def order_visualise(V, location, F):
     fig, ax = plt.subplots()
     visualise_point(location)
     for p1, p2 in combinations(V, 2):
-        ax1 = ax.plot(location.loc[[p1, p2], 'x'], location.loc[[p1, p2], 'y'], color='b', alpha=0.5, ls='--',
+        # ax.plot(location.loc[p1,['x'', 'y'])
+        # ax1 = ax.plot(location.loc[[p1, p2], 'x'], location.loc[[p1, p2], 'y'], color='b', alpha=0.5, ls='--',
+        #               label='unload')
+        ax1 = ax.plot(location.loc[[p1, p2], 'x'].values, location.loc[[p1, p2], 'y'].values, color='b', alpha=0.5, ls='--',
                       label='unload')
+
     # plt.legend(handles=ax1)
     for f in F:
         r = list(f)
