@@ -136,7 +136,7 @@ def route_visualise(i, R, location, F, G, arr_len=0.1, arr_width=0.05, g_arr_col
     ax.set_ylim(min(location['y']) - 1, max(location['y']) + 1)
     ax.axis('equal')
     fig.suptitle(f'route {i}')
-    plt.show()
+#    plt.show()
 
 
 if __name__ == "__main__":
