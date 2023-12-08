@@ -82,7 +82,7 @@ def order_visualise(V, location, F):
                           head_width=0.2, label='fullload')
     plt.legend(handles=[ax1[0], line2], loc='best')
     plt.title('test:order', fontsize='x-large', fontweight='bold')
- #   plt.show()
+    plt.show()
 
 
 # 可视化某条路线
