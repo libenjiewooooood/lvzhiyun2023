@@ -1,5 +1,5 @@
 import pandas as pd
-
+import matplotlib.pyplot as plt
 from data_process import data_pre
 from Subproblem import SubProblem
 from Master_prob2 import MasterProblem
