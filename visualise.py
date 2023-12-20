@@ -1,11 +1,9 @@
 import matplotlib.pyplot as plt
 import math
-from matplotlib import patches
-from matplotlib import path
-from matplotlib.path import Path
 from itertools import combinations
 from matplotlib.patches import Arc
 from matplotlib.patches import FancyArrow
+from data_process import coordi2distance
 
 
 def visualise_point(location):
@@ -142,7 +140,7 @@ def route_visualise(i, R, location, F, G, arr_len=0.1, arr_width=0.05, g_arr_col
     ax.set_ylim(min(location['y']) - 1, max(location['y']) + 1)
     ax.axis('equal')
     fig.suptitle(f'route {i}')
-    plt.show()
+#    plt.show()
 
 
 if __name__ == "__main__":
