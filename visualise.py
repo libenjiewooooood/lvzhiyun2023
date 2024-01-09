@@ -123,7 +123,7 @@ def route_visualise(i, R, location, F, G, arr_len=0.1, arr_width=0.05, g_arr_col
             r_g = R.iloc[i, R.columns.get_loc(g)]
             if r_g > 0:
                 r = list(g)
-                gline = plt.plot(location.loc[[r[0], r[1]], 'x'], location.loc[[r[0], r[1]], 'y'], c='b',
+                gline = plt.plot(location.loc[[r[0], r[1]], 'x'].to_numpy(), location.loc[[r[0], r[1]], 'y'].to_numpy(), c='b',
                                  label='unload')
                 mid = location.loc[[r[0], r[1]]].sum() / 2
                 l = list(location.loc[r[1]] - location.loc[r[0]])
