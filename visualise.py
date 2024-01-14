@@ -1,16 +1,17 @@
 import matplotlib.pyplot as plt
 import math
 from itertools import combinations
+
+import pandas as pd
 from matplotlib.patches import Arc
 from matplotlib.patches import FancyArrow
-from data_process import coordi2distance
 
 
-def visualise_point(location):
-    plt.scatter(location['x'], location['y'], color='k')
+def visualise_point(location,label,color='k'):
+    s=plt.scatter(location['x'], location['y'], color=color,label=label)
     for row in location.iterrows():
         plt.text(row[1].loc['x'] + 0.1, row[1].loc['y'], row[0], color='k', fontsize='medium', fontweight='bold')
-
+    return s
 
 # define arc class with arrow
 class elliptic_arc():
@@ -18,7 +19,7 @@ class elliptic_arc():
         self.p1 = p1
         self.p2 = p2
         self.center = (p1 + p2) / 2
-        self.width = coordi2distance(self.p1, self.p2)
+        self.width = self.coordi2distance(self.p1, self.p2)
         self.h = h
         self.arr_len = arr_len
         self.arr_width = arr_width
@@ -58,25 +59,22 @@ class elliptic_arc():
         return mid
 
 
-def order_visualise(V, location, F):
+def order_visualise(V, location, F,S,Se):
     """
     func：可视化订单
     output：所有满载路段及空载路段
     input：
       V list 所有结点
+      S 车库集合
+      Se 换电站集合
       location 结点坐标 dataframe
       F list 满载路段
     """
-    fig, ax = plt.subplots()
-    visualise_point(location)
-    for p1, p2 in combinations(V, 2):
-        # ax.plot(location.loc[p1,['x'', 'y'])
-        # ax1 = ax.plot(location.loc[[p1, p2], 'x'], location.loc[[p1, p2], 'y'], color='b', alpha=0.5, ls='--',
-        #               label='unload')
-        ax1 = ax.plot(location.loc[[p1, p2], 'x'].values, location.loc[[p1, p2], 'y'].values, color='b', alpha=0.5, ls='--',
-                      label='unload')
 
-    # plt.legend(handles=ax1)
+    fig, ax = plt.subplots()
+    for p1, p2 in combinations(V, 2):
+        ax1 = ax.plot(location.loc[[p1, p2], 'x'], location.loc[[p1, p2], 'y'], color='b', alpha=0.5, ls='--',
+                      label='unload')
     for f in F:
         r = list(f)
         #    plt.plot(location.loc[[r[0],r[1]],'x'],location.loc[[r[0],r[1]],'y'],color='r')
@@ -84,24 +82,34 @@ def order_visualise(V, location, F):
                           location.loc[r[1], 'x'] - location.loc[r[0], 'x'],
                           location.loc[r[1], 'y'] - location.loc[r[0], 'y'], length_includes_head=True, width=0.08,
                           head_width=0.2, label='fullload')
-    plt.legend(handles=[ax1[0], line2], loc='best')
+    # plt.legend(handles=[ax1[0], line2], loc='best')
+
+    p0=visualise_point(location.loc[list(S),:],'depot',color='r')
+    p1=visualise_point(location.loc[list(Se),:], 'battery station',color='g')
+    p2=visualise_point(location.loc[list(set(V)-set(S)-set(Se)),:],'consumer point')
+    plt.legend(handles=[p0,p1,p2,ax1[0], line2],loc='best')
+    # plt.legend(handles=ax1)
     plt.title('test:order', fontsize='x-large', fontweight='bold')
     plt.show()
 
 
 # 可视化某条路线
-def route_visualise(i, R, location, F, G, arr_len=0.1, arr_width=0.05, g_arr_col='b', f_arr_col='r'):
+def route_visualise(i, R, location,V,S,Se, F, G, arr_len=0.1, arr_width=0.05, g_arr_col='b', f_arr_col='r'):
     """
     func:可视化路线
     input：
      i ：路线在R中的序号
      R：路线
+     V,S,Se:所有结点，车库，换电站
      location：结点坐标
      F，G：list 满载/空载路段
     """
     fig, ax = plt.subplots()
     # 绘制结点
-    visualise_point(location)
+    p0=visualise_point(location.loc[list(S), :],'depot', color='r')
+    p1=visualise_point(location.loc[list(Se), :], 'battery station',color='g')
+    p2=visualise_point(location.loc[list(set(V) - set(S) - set(Se)), :],'consumer point')
+    plt.legend()
     # 满载
     for f in F:
         if f in R.columns:
@@ -122,8 +130,9 @@ def route_visualise(i, R, location, F, G, arr_len=0.1, arr_width=0.05, g_arr_col
         if g in R.columns:
             r_g = R.iloc[i, R.columns.get_loc(g)]
             if r_g > 0:
+                print(g)
                 r = list(g)
-                gline = plt.plot(location.loc[[r[0], r[1]], 'x'].to_numpy(), location.loc[[r[0], r[1]], 'y'].to_numpy(), c='b',
+                gline = plt.plot(location.loc[[r[0], r[1]], 'x'], location.loc[[r[0], r[1]], 'y'], c='b',
                                  label='unload')
                 mid = location.loc[[r[0], r[1]]].sum() / 2
                 l = list(location.loc[r[1]] - location.loc[r[0]])
@@ -145,9 +154,23 @@ def route_visualise(i, R, location, F, G, arr_len=0.1, arr_width=0.05, g_arr_col
 
 if __name__ == "__main__":
     # 可视化订单
-    # order_visualise(V,location,F)
-    # 可视化R中的第1和第3条路线
-    # Index_R=[0,2]
-    # for i in Index_R:
-    #   route_visualise(i,R,location,F,G)
-    pass
+    from data_process import data_pre,coordi2distance
+    import numpy as np
+    order = pd.DataFrame([['A', 'B', 10], ['A', 'D', 8], ['B', 'C', 13], ['D', 'C', 4]],
+                         columns=['start', 'end', 'weight'])
+    location = pd.DataFrame([[-2, 0], [2,0.5],[1, 1], [4, 1], [1.5, -1], [5, -2], [0, 1], [2, 0]],
+                            index=['S','s', 'A', 'B', 'C', 'D', 'E', 'F'], columns=['x', 'y'])
+    pcost_f, pcost_g = 1, 0.8  # 单位距离满载/空载耗能
+    # 换电站集合
+    Se = {'E', 'F'}
+    S = {'S','s'}
+    df,V,F,m_f,G,m_g,L=data_pre(order,location,pcost_f,pcost_g,S, Se)
+    order_visualise(V,location,F,S,Se)
+    # 可视化路线
+    Index_R=[0,]
+    r=np.zeros((1,len(L)))
+    R=pd.DataFrame(r,columns=L)
+    R.loc[:,['SA','AB','BF','FS']]=1
+    for i in Index_R:
+        route_visualise(i,R,location,V,S,Se,F,G)
+    plt.show()
