@@ -9,19 +9,12 @@ from pandas import Series, DataFrame
 
 class SubProblem:
     def __init__(self, pi: Series, Vs: set or list[str], Ve: set or list[str], m_f: Series, m_g: Series,
-                 s, Se: set or list[str], Q, Q_0, u, sigma) -> None:
+                 s, Se: set or list[str], Q, Q_0, mu, sigma) -> None:
         self.Vs = Vs #订单起点集合
         self.Vs_all = [f"{node}{i}" for node in Vs for i in range(1, 6)]
         self.Ve = Ve #订单终点集合
 
-        self.s = s #指定车库
-
-
-        # 这里需要添加虚拟终点
-
-
-
-
+        self.s = s #指定车库为起点
         self.Se = Se #换电站集合
         self.V_all = list(set(self.Vs_all)|s|Se)  # 所有需要节点集合例如A1,A2,A3,C1,C2,C3,S,s,E,F
         self.Q = Q  # 最大电池容量
@@ -71,8 +64,9 @@ class SubProblem:
         # 定义路径整数变量x
         self.e = self.model.addVars(self.V_all, lb=0, ub=GRB.INFINITY, name='e')
         # 定义电量变量e
-        self.c = self.model.addVars(self.Se, lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='c')
-        # 定义在换电站i更换电池数量
+        self.c = self.model.addVas(self.Se, lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='c')
+        # 定义在换电站i更换电池数量r
+        self.u = self.model.addVars(self.V_all, lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='c')
 
         for i in self.V_all:
             self.model.addConstr(gp.quicksum(self.x[i, j] for j in self.V_all) == 
@@ -81,6 +75,7 @@ class SubProblem:
             self.model.addConstr(gp.quicksum(self.x[i, j] for j in self.V_all) <= 1, 
                          name=f"limit_{i}")
         # 流平衡约束 & 每个点最多被访问一次
+        # 这里用的所有点入流出流相等，可能需要改成车库点以外
             
         self.model.addConstr(gp.quicksum( self.x[self.s][j] for j in self.V_all) == 1, name=f"balance_s")
         # 车库出流为1
@@ -102,17 +97,17 @@ class SubProblem:
             self.model.addConstr(self.c[i] * self.Q_0 >= self.Q - self.e[i],  name=f"ex_battery")
         #换电消耗电池数量
         
-        
+        # mtz消除子回路
+        for i in self.V_all:
+            for j in self.V_all:
+                if i != j and i != self.s and j != self.s:  # 假设 s 是起始点
+                    self.model.addConstr(self.u[i] - self.u[j] + len(self.V_all) * self.x[i, j] <= len(self.V_all) - 1)
 
         self.model.addConstr(gp.quicksum( self.x[i][j] for i in self.V_all for j in self.Se) <= 1,  name=f"ex_limit")
         #换电次数小于等于1
-        
-
-
-        
-
-    def set_objective(self, q, u, pi, sigma):
-        self.model.setObjective(gp.quicksum(q[i][j] * self.x[i][j] for i in self.V_all for j in self.V_all)-gp.quicksum(u * pi[i][j] * self.x[i][j] for i in self.V_all for j in self.V_all)-gp.quicksum(self.c[i] * sigma[i] for i in self.Sel), sense=GRB.MAXIMIZE)
+ 
+    def set_objective(self, q, mu, pi, sigma):
+        self.model.setObjective(gp.quicksum(q[i][j] * self.x[i][j] for i in self.V_all for j in self.V_all)-gp.quicksum(mu * pi[i][j] * self.x[i][j] for i in self.V_all for j in self.V_all)-gp.quicksum(self.c[i] * sigma[i] for i in self.Sel), sense=GRB.MAXIMIZE)
         # 生成目的函数
 
     def solve(self, flag=0):
