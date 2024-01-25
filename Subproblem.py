@@ -36,7 +36,6 @@ class SubProblem:
         self.m_g = m_g # m_g空载路径g耗电量
         #生成两点之间的耗电量
         q = pd.DataFrame(0.0, index=self.V_all, columns=self.V_all)
-        #print(q)
         for i in self.V_all:
             for j in self.V_all:
                 if i != j:
@@ -56,28 +55,22 @@ class SubProblem:
                         consumption_f = key_f  # 如果键不存在，返回0
                         consumption_g = m_g.get(key_g, 0)  # 如果键不存在，返回0
                     # 为 q 的对应位置赋值
-                    q[i][j] = consumption_f + consumption_g
+                    q.at[i,j] = consumption_f + consumption_g
                     # if i == 'F' and j == 'A1':
                     #     print('q(F,A1)')
                     #     print(i[0],j[0])
                     #     print(q[i][j])
         for i in self.V_all:
             for j in self.V_all:
-                if q[i][j] == 0:
-                    q[i][j] = 101
+                if q.at[i,j] == 0:
+                    q.at[i,j] = 101
         # 如果找不到路径则取99
         self.q = q
-        # print(self.q)
-        # print(self.q['A1']['A1'])
-        # print(self.q['A1']['A3'])
-        # print('self.q.at[A1, C1]')
-        # print(self.q.at['A1', 'C1'])
+        print('self.q:\n', self.q)
         self.model = None
         self.x = None
         self.e = None
         self.c = None
-        # print('self.Vs_all')
-        # print(self.Vs_all)
 
         
 
@@ -148,8 +141,8 @@ class SubProblem:
         #换电消耗电池数量
         
         # mtz消除子回路
-        for i in self.Vs_all or self.Se:
-            for j in self.Vs_all or self.Se:
+        for i in (set(self.Vs_all) | self.Se):
+            for j in (set(self.Vs_all) | self.Se):
                 # if i != j and i != self.s and j != self.s:  # 假设 s 是起始点
                 self.model.addConstr(self.u[i] - self.u[j] + len(self.V_all) * self.x[i, j] <= len(self.V_all) - 1,  name=f"mtz")
 
@@ -158,10 +151,8 @@ class SubProblem:
         #换电次数小于等于1
  
     def set_objective(self, mu, sigma):
-        # print("V_all:", self.V_all)
-        # print("q indices:", self.q.index, self.q.columns)
-        # print("q:", self.q)
-        # print('self.pi_all:', self.pi_all )
+        # print("sigma", sigma)
+        # print("mu", mu)
         self.model.setObjective(gp.quicksum(self.q.at[i, j] * self.x[i,j] for i in self.V_all for j in self.V_all)-gp.quicksum(mu * self.pi_all[i] * gp.quicksum(self.x[i,j] for j in self.V_all) for i in self.Vs_all)-gp.quicksum(self.c[i] * sigma[i] for i in self.Se), sense=GRB.MINIMIZE)
         # 生成目的函数
 
@@ -174,7 +165,13 @@ class SubProblem:
             self.model.write("model.ilp")
 
     def get_solution(self):
-        solutionx = [int(self.x[i,j].X) for i in self.V_all for j in self.V_all]
+        solutionx = pd.DataFrame(index=self.V_all, columns=self.V_all)
+
+        # 遍历所有变量，并将它们的值填充到 DataFrame 中
+        for i in self.V_all:
+            for j in self.V_all:
+                solutionx.at[i, j] = self.x[i, j].X
+
         solutione = [int(self.e[i].X) for i in self.V_all]
         solutionc = [int(self.c[i].X) for i in self.Se]
         solutionu = [int(self.u[i].X) for i in self.V_all]
@@ -254,13 +251,13 @@ if __name__ == "__main__":
     S = {'S','s'}
     df,V,Vs,F,m_f,G,m_g,L=data_pre(order,location,pcost_f,pcost_g, S, Se)
     #  get from RMP RC
-    pi = {'A': 5, 'C': 5}
+    pi = {'A': 20, 'C': 20}
     pi = Series(pi)
     # RMP问题满载路径的对偶值
-    Q = 100 #最大电池容量
-    Q_0 = 20 #单节电池容量
-    mu = 3 # 最大载重
-    sigma = {'E': 2, 'F': 2}
+    Q = 40 #最大电池容量
+    Q_0 = 10 #单节电池容量
+    mu = 5 # 最大载重
+    sigma = {'E': -1, 'F': -1}
     sigma = Series(sigma)
     s = {'S'}# 选中的车库
     sub_prob = SubProblem(pi, Vs, m_f, m_g, s, Se, Q, Q_0, mu, sigma)
