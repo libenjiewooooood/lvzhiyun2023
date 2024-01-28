@@ -8,29 +8,30 @@ def coordi2distance(a, b):
     return ((a['x'] - b['x']) ** 2 + (a['y'] - b['y']) ** 2) ** 0.5
 
 
-def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_g: float, S:set, Se:set):
+def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_g: float, S: set, Se: set):
     """
     :param order: 订单集合, index=['AB', 'CD']
     :param location: 运输节点集合
     :param pcost_f: 单位距离满载消耗
     :param pcost_g: 单位距离空载消耗
-    :param is_e 说明是否为可换点情景
-    :Se 换电站集合
-    :S 车库集合
+    :param S 换电站集合
+    :param Se 车库集合
     :return:
-    V:[str] 所有节点集合
-    F:[str] 订单集合，满载运输弧集合
-    G:[str] 空载运输弧集合
-    L:[str] 弧集合，L = F or G
-    d_f:Series 订单运输需求, index=F, 例如index=['AB', 'DC'] 
-    m_f:Series 满载运输弧的运输电量消耗, index=F 
-    m_g:Series 空载运输弧的运输电量消耗, index=G
-    b_vl:pd.DataFrame 关联矩阵，index=V, name=L
+        V:[str] 所有节点集合
+        Vs:[str] 订单起点集合
+        F:[str] 订单集合，满载运输弧集合
+        G:[str] 空载运输弧集合
+        L:[str] 弧集合，L = F or G
+        df:Series 订单运输需求, index=F, 例如index=['AB', 'DC']
+        m_f:Series 满载运输弧的运输电量消耗, index=F
+        m_g:Series 空载运输弧的运输电量消耗, index=G
+
 
     """
     # df = order['weight']
     s, e = set(order['start']), set(order['end'])
     V = list(S | s | e | Se)
+    Vs = set(order['start'])  # 订单起点集合
     # 满载路段
     F, m_f = [], []
     for __, row in order.iterrows():
@@ -79,17 +80,17 @@ def data_pre(order: pd.DataFrame, location: pd.DataFrame, pcost_f: float, pcost_
 
     m_g = pd.Series(m_g, index=G)
     L = F + G  # 所有路段
-    return df, V, F, m_f, G, m_g, L
+    return df, V, Vs, F, m_f, G, m_g, L
 
 
 if __name__ == "__main__":
     u = 3  # 货车最大载货量
     order = pd.DataFrame([['A', 'B', 10], ['A', 'D', 8], ['B', 'C', 13], ['D', 'C', 4]],
                          columns=['start', 'end', 'weight'])
-    location = pd.DataFrame([[-2, 0], [2,1],[1, 1], [4, 1], [1.5, -1], [5, -2], [0, 1], [2, 0]],
-                            index=['S','s', 'A', 'B', 'C', 'D', 'E', 'F'], columns=['x', 'y'])
+    location = pd.DataFrame([[-2, 0], [2, 1], [1, 1], [4, 1], [1.5, -1], [5, -2], [0, 1], [2, 0]],
+                            index=['S', 's', 'A', 'B', 'C', 'D', 'E', 'F'], columns=['x', 'y'])
     pcost_f, pcost_g = 1, 0.8  # 单位距离满载/空载耗能
     # 换电站集合
-    Se = {'E', 'F'}
-    S = {'S','s'}
-    df,V,F,m_f,G,m_g,L=data_pre(order,location,pcost_f,pcost_g,S, Se)
+    Se = {'E', 'F'}  # 充电站
+    S = {'S', 's'}  # 车库
+    df, V, Vs, F, m_f, G, m_g, L = data_pre(order, location, pcost_f, pcost_g, S, Se)

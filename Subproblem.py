@@ -3,18 +3,24 @@ import gurobipy as gp
 import pandas as pd
 from gurobipy import GRB
 from pandas import Series, DataFrame
-from data_process import data_pre
 # from visualise import route_visualise
-# from data_process import data_pre
+from data_process import data_pre
 
 
 class SubProblem:
     def __init__(self, pi: Series, Vs: set or list[str], m_f: Series, m_g: Series,
                  s: set or list[str], Se: set or list[str], Q, Q_0, mu, sigma) -> None:
-        self.Vs = Vs #订单起点集合
-        self.Vs_all = [f"{node}{i}" for node in Vs for i in range(1, 4)] #复制后的订单起点
+        self.Vs = Vs  # 订单起点集合
+        # TODO 订单能访问的最大次数需要计算出来，而不是在这里直接给出固定值
+        self.Vs_all = [f"{node}{i}" for node in Vs for i in range(1, 4)]  # 复制后的订单起点
         # print(self.Vs_all)
-        self.pi = pi #RMP问题得到的执行满载路段的对偶值
+        # TODO 主问题的对偶值不仅是满载路段的对偶值，还有换电站的对偶值, 传入变量sigma没用用到
+        # TODO assert set(pi.index) == Vs
+        # TODO assert set(sigma.index) == Se
+        self.mu = mu
+        self.sigma = sigma
+
+        self.pi = pi  # RMP问题得到的执行满载路段的对偶值
         pi_all = {}  # 扩展后的 pi 字典
         # 遍历原始 pi 字典中的每个键和值
         for node, value in pi.items():
@@ -22,25 +28,24 @@ class SubProblem:
             for i in range(1, 4):
                 pi_key = f"{node}{i}"
                 pi_all[pi_key] = value
-        self.pi_all = pd.Series(pi_all) #复制后的RMP问题对偶值
+        self.pi_all = pd.Series(pi_all)  # 复制后的RMP问题对偶值
         # print('pi_all')
         # print(self.pi_all)
         # self.Ve = Ve #订单终点集合
-        self.s = s #指定车库为起点
-        self.Se = Se #换电站集合
-        self.V_all = list(set(self.Vs_all)|s|Se)  # 所有需要节点集合例如A1,A2,A3,C1,C2,C3,S,s,E,F
+        self.s = s  # 指定车库为起点
+        self.Se = Se  # 换电站集合
+        self.V_all = list(set(self.Vs_all) | s | Se)  # 所有需要节点集合例如A1,A2,A3,C1,C2,C3,S,s,E,F
         self.Q = Q  # 最大电池容量
         self.Q_0 = Q_0  # 换电站更换的单节电池容量
-        M = 1000 # M一个极大的数
-        self.m_f = m_f # m_f满载路径f耗电量
-        self.m_g = m_g # m_g空载路径g耗电量
-        #生成两点之间的耗电量
+        self.m_f = m_f  # m_f满载路径f耗电量
+        self.m_g = m_g  # m_g空载路径g耗电量
+        # 生成两点之间的耗电量
         q = pd.DataFrame(0.0, index=self.V_all, columns=self.V_all)
         for i in self.V_all:
             for j in self.V_all:
                 if i != j:
                     if i[0] in Vs:
-                    # 为 m_f 找到以 i[0] 开头的键
+                        # 为 m_f 找到以 i[0] 开头的键
                         key_f = next((k for k in m_f.keys() if k.startswith(i[0])), None)
 
                         # 为 m_g 找到以 j 结尾的键
@@ -55,15 +60,15 @@ class SubProblem:
                         consumption_f = key_f  # 如果键不存在，返回0
                         consumption_g = m_g.get(key_g, 0)  # 如果键不存在，返回0
                     # 为 q 的对应位置赋值
-                    q.at[i,j] = consumption_f + consumption_g
+                    q.at[i, j] = consumption_f + consumption_g
                     # if i == 'F' and j == 'A1':
                     #     print('q(F,A1)')
                     #     print(i[0],j[0])
                     #     print(q[i][j])
         for i in self.V_all:
             for j in self.V_all:
-                if q.at[i,j] == 0:
-                    q.at[i,j] = 101
+                if q.at[i, j] == 0:
+                    q.at[i, j] = 101
         # 如果找不到路径则取99
         self.q = q
         print('self.q:\n', self.q)
@@ -72,88 +77,91 @@ class SubProblem:
         self.e = None
         self.c = None
 
-        
-
     def create_model(self):
+        M = 1000  # M一个极大的数
         self.model = gp.Model("sub model")
         # 初始化子问题
         self.x = self.model.addVars(self.V_all, self.V_all, lb=0, ub=1, vtype=GRB.INTEGER, name='x')
         # 定义路径0-1变量x
         self.e = self.model.addVars(self.V_all, lb=0, ub=self.Q, name='e')
         # 定义电量变量e
-        self.c = self.model.addVars(self.Se, lb=0, ub=10 , vtype=GRB.INTEGER, name='c')
+        self.c = self.model.addVars(self.Se, lb=0, ub=10, vtype=GRB.INTEGER, name='c')
         # 定义在换电站i更换电池数量r
         self.u = self.model.addVars(self.V_all, lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='u')
         # u表示访问顺序，用于除去子回路
 
         for i in self.V_all:
-            self.model.addConstr(gp.quicksum(self.x[i, j] for j in self.V_all) == 
-                         gp.quicksum(self.x[j, i] for j in self.V_all), 
-                         name=f"balance_{i}")
-            self.model.addConstr(gp.quicksum(self.x[i, j] for j in self.V_all) <= 1, 
-                         name=f"limit_{i}")
+            self.model.addConstr(gp.quicksum(self.x[i, j] for j in self.V_all) ==
+                                 gp.quicksum(self.x[j, i] for j in self.V_all),
+                                 name=f"balance_{i}")
+            self.model.addConstr(gp.quicksum(self.x[i, j] for j in self.V_all) <= 1,
+                                 name=f"limit_{i}")
         # 流平衡约束 & 每个点最多被访问一次
-        
+
         for i in self.s:
-            self.model.addConstr(gp.quicksum( self.x[i,j] for j in self.V_all) == 1, name=f"balance_s")
+            self.model.addConstr(gp.quicksum(self.x[i, j] for j in self.V_all) == 1, name=f"balance_s")
             # 车库出度为1
-            self.model.addConstr(gp.quicksum( self.x[j,i] for j in self.V_all) == 1,  name=f"balance_s2")
+            self.model.addConstr(gp.quicksum(self.x[j, i] for j in self.V_all) == 1, name=f"balance_s2")
             # 车库入度为1
 
         for i in self.s:
-            self.model.addConstr(self.e[i] == self.Q,  name=f"energy_s")
-        #车库出发时能量为满
-        
-        for i in self.Vs_all :
+            self.model.addConstr(self.e[i] == self.Q, name=f"energy_s")
+        # 车库出发时能量为满
+
+        for i in self.Vs_all:
             for j in self.Vs_all:
                 if i != j:
-                    self.model.addConstr(self.e[i] - self.q.at[i, j] + M * (1 - self.x[i,j]) >= self.e[j],  name=f"energy_1_1")
-        #从起点出发，到起点的电量约束
-                
+                    self.model.addConstr(self.e[i] - self.q.at[i, j] + M * (1 - self.x[i, j]) >= self.e[j],
+                                         name=f"energy_1_1")
+        # 从起点出发，到起点的电量约束
+
         for i in self.Vs_all:
             for j in self.Se:
-                self.model.addConstr(self.e[i] - self.q.at[i, j] + M * (1 - self.x[i,j]) >= self.e[j],  name=f"energy_1_2")
-        #从起点出发，到充电桩的电量约束
-                
-        for i in self.s :
+                self.model.addConstr(self.e[i] - self.q.at[i, j] + M * (1 - self.x[i, j]) >= self.e[j],
+                                     name=f"energy_1_2")
+        # 从起点出发，到充电桩的电量约束
+
+        for i in self.s:
             for j in self.Vs_all:
-                self.model.addConstr(self.Q - self.q.at[i, j] + M * (1 - self.x[i,j]) >= self.e[j],  name=f"energy_1_3")
-        #从车库出发，到起点的电量约束
-                
-                                
+                self.model.addConstr(self.Q - self.q.at[i, j] + M * (1 - self.x[i, j]) >= self.e[j], name=f"energy_1_3")
+        # 从车库出发，到起点的电量约束
+
         for i in self.Se:
             for j in self.Vs_all:
-                self.model.addConstr(self.Q - self.q.at[i, j] + M * (1 - self.x[i,j]) >= self.e[j],  name=f"energy_2")
-        #从换电站到其他所有节点的电量约束
-                
+                self.model.addConstr(self.Q - self.q.at[i, j] + M * (1 - self.x[i, j]) >= self.e[j], name=f"energy_2")
+        # 从换电站到其他所有节点的电量约束
+
         for i in self.Vs_all:
             for j in self.s:
-                self.model.addConstr(self.e[i] - self.q.at[i, j] + M * (1 - self.x[i,j]) >= 0,  name=f"energy_3")
-        #从起点回到车库的电量约束
-                
+                self.model.addConstr(self.e[i] - self.q.at[i, j] + M * (1 - self.x[i, j]) >= 0, name=f"energy_3")
+        # 从起点回到车库的电量约束
+
         for i in self.Se:
             for j in self.s:
-                self.model.addConstr(self.Q - self.q.at[i, j] + M * (1 - self.x[i,j]) >= 0,  name=f"energy_4")
-        #从充电桩回到车库的电量约束
-                
-        for i in self.Se :
-            self.model.addConstr(self.c[i] * self.Q_0 >= self.Q - self.e[i],  name=f"ex_battery")
-        #换电消耗电池数量
-        
+                self.model.addConstr(self.Q - self.q.at[i, j] + M * (1 - self.x[i, j]) >= 0, name=f"energy_4")
+        # 从充电桩回到车库的电量约束
+
+        for i in self.Se:
+            self.model.addConstr(self.c[i] * self.Q_0 >= self.Q - self.e[i], name=f"ex_battery")
+        # 换电消耗电池数量
+
         # mtz消除子回路
         for i in (set(self.Vs_all) | self.Se):
             for j in (set(self.Vs_all) | self.Se):
                 # if i != j and i != self.s and j != self.s:  # 假设 s 是起始点
-                self.model.addConstr(self.u[i] - self.u[j] + len(self.V_all) * self.x[i, j] <= len(self.V_all) - 1,  name=f"mtz")
+                self.model.addConstr(self.u[i] - self.u[j] + len(self.V_all) * self.x[i, j] <= len(self.V_all) - 1,
+                                     name=f"mtz")
 
+        self.model.addConstr(gp.quicksum(self.x[i, j] for i in self.V_all for j in self.Se) <= 1, name=f"ex_limit")
+        # 换电次数小于等于1
 
-        self.model.addConstr(gp.quicksum( self.x[i,j] for i in self.V_all for j in self.Se) <= 1,  name=f"ex_limit")
-        #换电次数小于等于1
- 
-    def set_objective(self, mu, sigma):
+    def set_objective(self):
         # print("sigma", sigma)
         # print("mu", mu)
-        self.model.setObjective(gp.quicksum(self.q.at[i, j] * self.x[i,j] for i in self.V_all for j in self.V_all)-gp.quicksum(mu * self.pi_all[i] * gp.quicksum(self.x[i,j] for j in self.V_all) for i in self.Vs_all)-gp.quicksum(self.c[i] * sigma[i] for i in self.Se), sense=GRB.MINIMIZE)
+        self.model.setObjective(
+            gp.quicksum(self.q.at[i, j] * self.x[i, j] for i in self.V_all for j in self.V_all) - gp.quicksum(
+                self.mu * self.pi_all[i] * gp.quicksum(self.x[i, j] for j in self.V_all) for i in self.Vs_all) - gp.quicksum(
+                self.c[i] * self.sigma[i] for i in self.Se), sense=GRB.MINIMIZE)
         # 生成目的函数
 
     def solve(self, flag=0):
@@ -164,7 +172,17 @@ class SubProblem:
             self.model.computeIIS()
             self.model.write("model.ilp")
 
-    def get_solution(self):
+    def get_solution(self) -> dict:
+        """ 返回 RC<0 的一条路径的相关信息
+        TODO [重要] 子问题求解出的结果还需要进行转换
+        :return:
+        dict['route']:Series or dict 返回这条路径执行满载路段的次数, key为满载路段, value为执行的次数
+        dict['route'] = Series(list[int], index=F)
+
+        dict['charge_num']: Series or dict 返回这条路径中在换电站更换电池的个数, key为换电站，value为换电个数
+        dict['charge_num'] = Series(list[int], index=Se)
+        """
+
         solutionx = pd.DataFrame(index=self.V_all, columns=self.V_all)
 
         # 遍历所有变量，并将它们的值填充到 DataFrame 中
@@ -179,14 +197,15 @@ class SubProblem:
         print(self.V_all)
         return solutionx, solutione, solutionc, solutionu
 
-    @property
     def get_obj(self):
-        return self.model.ObjVal
+        if self.model.status == GRB.OPTIMAL:
+            return self.model.ObjVal
+        else:
+            raise Exception("No solution found")
         # 返回目标函数值
 
     def write(self):
         self.model.write("sub_model.lp")
-
 
 
 # # 判断是否有子回路
@@ -242,27 +261,31 @@ if __name__ == "__main__":
     M = 50  # 总能耗上限
     order = pd.DataFrame([['A', 'B', 10], ['C', 'D', 13]],
                          columns=['start', 'end', 'weight'])
-    location = pd.DataFrame([[-2, 0], [2,1],[1, 1], [4, 1], [1.5, -1], [5, -2], [0, 1], [2, 0]],
-                            index=['S','s', 'A', 'B', 'C', 'D', 'E', 'F'], columns=['x', 'y'])
+    location = pd.DataFrame([[-2, 0], [2, 1], [1, 1], [4, 1], [1.5, -1], [5, -2], [0, 1], [2, 0]],
+                            index=['S', 's', 'A', 'B', 'C', 'D', 'E', 'F'], columns=['x', 'y'])
     pcost_f, pcost_g = 1, 0.8  # 单位距离满载/空载耗能
-    # 换电站集合
-    Se = {'E','F'}
-    # 车库集合
-    S = {'S','s'}
-    df,V,Vs,F,m_f,G,m_g,L=data_pre(order,location,pcost_f,pcost_g, S, Se)
+
+    Se = {'E', 'F'}  # 换电站集合
+
+    S = {'S', 's'}  # 车库集合
+    df, V, Vs, F, m_f, G, m_g, L = data_pre(order, location, pcost_f, pcost_g, S, Se)
     #  get from RMP RC
     pi = {'A': 20, 'C': 20}
     pi = Series(pi)
+
+    # TODO  对偶值为每个订单起始点集合的
+    assert set(pi.index) == set(Vs)
+
     # RMP问题满载路径的对偶值
-    Q = 40 #最大电池容量
-    Q_0 = 10 #单节电池容量
-    mu = 5 # 最大载重
+    Q = 40  # 最大电池容量
+    Q_0 = 10  # 单节电池容量
+    mu = 5  # 最大载重
     sigma = {'E': -1, 'F': -1}
     sigma = Series(sigma)
-    s = {'S'}# 选中的车库
+    s = {'S'}  # 选中的车库
     sub_prob = SubProblem(pi, Vs, m_f, m_g, s, Se, Q, Q_0, mu, sigma)
     sub_prob.create_model()
-    sub_prob.set_objective(mu, sigma)
+    sub_prob.set_objective()
     sub_prob.solve()
     print(sub_prob.get_solution())
     # 可视化生成的路线，可判断一下子回路判断及消除逻辑是否正确
