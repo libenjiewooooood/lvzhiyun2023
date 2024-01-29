@@ -15,10 +15,11 @@ class SubProblem:
         print('n', n)
         self.Vs = Vs  # 订单起点集合
         # TODO 订单能访问的最大次数需要计算出来，而不是在这里直接给出固定值
+        # DONE 已添加计算
         self.Vs_all = [f"{node}{i}" for node in Vs for i in range(1, n)]  # 复制后的订单起点
         # print(self.Vs_all)
-        # 主问题的对偶值不仅是满载路段的对偶值，还有换电站的对偶值, 传入变量sigma没用用到
-        # 回复 sigma为换电站对偶值
+        # TODO 主问题的对偶值不仅是满载路段的对偶值，还有换电站的对偶值, 传入变量sigma没用用到
+        # DONE sigma为换电站对偶值
         # TODO assert set(pi.index) == Vs
         # TODO assert set(sigma.index) == Se
         self.mu = mu #车辆最大载重
