@@ -14,11 +14,12 @@ class SubProblem:
         # TODO 订单能访问的最大次数需要计算出来，而不是在这里直接给出固定值
         self.Vs_all = [f"{node}{i}" for node in Vs for i in range(1, 4)]  # 复制后的订单起点
         # print(self.Vs_all)
-        # TODO 主问题的对偶值不仅是满载路段的对偶值，还有换电站的对偶值, 传入变量sigma没用用到
+        # 主问题的对偶值不仅是满载路段的对偶值，还有换电站的对偶值, 传入变量sigma没用用到
+        # 回复 sigma为换电站对偶值
         # TODO assert set(pi.index) == Vs
         # TODO assert set(sigma.index) == Se
-        self.mu = mu
-        self.sigma = sigma
+        self.mu = mu #车辆最大载重
+        self.sigma = sigma #换电站的对偶值
 
         self.pi = pi  # RMP问题得到的执行满载路段的对偶值
         pi_all = {}  # 扩展后的 pi 字典
@@ -280,7 +281,7 @@ if __name__ == "__main__":
     Q = 40  # 最大电池容量
     Q_0 = 10  # 单节电池容量
     mu = 5  # 最大载重
-    sigma = {'E': -1, 'F': -1}
+    sigma = {'E': -1, 'F': -1} # 换电站对应对偶值
     sigma = Series(sigma)
     s = {'S'}  # 选中的车库
     sub_prob = SubProblem(pi, Vs, m_f, m_g, s, Se, Q, Q_0, mu, sigma)
