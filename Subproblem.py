@@ -9,10 +9,13 @@ from data_process import data_pre
 
 class SubProblem:
     def __init__(self, pi: Series, Vs: set or list[str], m_f: Series, m_g: Series,
-                 s: set or list[str], Se: set or list[str], Q, Q_0, mu, sigma) -> None:
+                 s: set or list[str], Se: set or list[str], Q, Q_0, mu, sigma: Series ) -> None:
+        max_Vs = Q / m_f #计算每个满载路径最大重复次数
+        n = int(max_Vs.max()) #计算需要复制起点数
+        print('n', n)
         self.Vs = Vs  # 订单起点集合
         # TODO 订单能访问的最大次数需要计算出来，而不是在这里直接给出固定值
-        self.Vs_all = [f"{node}{i}" for node in Vs for i in range(1, 4)]  # 复制后的订单起点
+        self.Vs_all = [f"{node}{i}" for node in Vs for i in range(1, n)]  # 复制后的订单起点
         # print(self.Vs_all)
         # 主问题的对偶值不仅是满载路段的对偶值，还有换电站的对偶值, 传入变量sigma没用用到
         # 回复 sigma为换电站对偶值
@@ -20,13 +23,12 @@ class SubProblem:
         # TODO assert set(sigma.index) == Se
         self.mu = mu #车辆最大载重
         self.sigma = sigma #换电站的对偶值
-
         self.pi = pi  # RMP问题得到的执行满载路段的对偶值
         pi_all = {}  # 扩展后的 pi 字典
         # 遍历原始 pi 字典中的每个键和值
         for node, value in pi.items():
             # 为每个原始节点创建扩展键
-            for i in range(1, 4):
+            for i in range(1, n):
                 pi_key = f"{node}{i}"
                 pi_all[pi_key] = value
         self.pi_all = pd.Series(pi_all)  # 复制后的RMP问题对偶值
@@ -278,8 +280,8 @@ if __name__ == "__main__":
     assert set(pi.index) == set(Vs)
 
     # RMP问题满载路径的对偶值
-    Q = 40  # 最大电池容量
-    Q_0 = 10  # 单节电池容量
+    Q = 20  # 最大电池容量
+    Q_0 = 5  # 单节电池容量
     mu = 5  # 最大载重
     sigma = {'E': -1, 'F': -1} # 换电站对应对偶值
     sigma = Series(sigma)
