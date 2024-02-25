@@ -12,12 +12,16 @@ class SubProblem:
                  s: set or list[str], Se: set or list[str], Q, Q_0, mu, sigma: Series ) -> None:
         max_Vs = Q / m_f #计算每个满载路径最大重复次数
         n = int(max_Vs.max()) #计算需要复制起点数
-        print('n', n)
+        # print('n', n)
         self.Vs = Vs  # 订单起点集合
+        # TODO 订单能访问的最大次数需要计算出来，而不是在这里直接给出固定值
+        # DONE 已添加计算
         self.Vs_all = [f"{node}{i}" for node in Vs for i in range(1, n)]  # 复制后的订单起点
         # print(self.Vs_all)
-        assert set(pi.index) == Vs
-        assert set(sigma.index) == Se
+        # TODO 主问题的对偶值不仅是满载路段的对偶值，还有换电站的对偶值, 传入变量sigma没用用到
+        # DONE sigma为换电站对偶值
+        # TODO assert set(pi.index) == Vs
+        # TODO assert set(sigma.index) == Se
         self.mu = mu #车辆最大载重
         self.sigma = sigma #换电站的对偶值
         self.pi = pi  # RMP问题得到的执行满载路段的对偶值
@@ -71,7 +75,7 @@ class SubProblem:
                     q.at[i, j] = 101
         # 如果找不到路径则取99
         self.q = q
-        print('self.q:\n', self.q)
+        # print('self.q:\n', self.q)
         self.model = None
         self.x = None
         self.e = None
@@ -194,8 +198,40 @@ class SubProblem:
         solutionc = [int(self.c[i].X) for i in self.Se]
         solutionu = [int(self.u[i].X) for i in self.V_all]
         # print(self.Se)
-        print(self.V_all)
-        return solutionx, solutione, solutionc, solutionu
+        # print(self.V_all)
+        # 提取路径信息
+        # 提取路径信息
+        route = {}
+        for j in self.Vs:
+            # 遍历所有复制后的订单起点
+            for i in self.V_all:
+                if i.startswith(j):  # 检查是否为该订单起点的复制节点
+                # 累加访问次数
+                    route[j] = route.get(j, 0) + sum(solutionx.at[i, j] for j in self.V_all)
+
+        # 提取换电站信息
+        charge_num = {se: int(self.c[se].X) for se in self.Se}
+
+        # 生成路径
+        start_node = next(iter(self.s))  # 从起点开始找路径
+        creat_route = [start_node]
+        current_node = start_node
+        while True:
+            next_node = None
+            for node in solutionx.columns:
+                if solutionx.at[current_node, node] > 0.5:  # 使用 >0.5 代替 ==1 以处理浮点数
+                    next_node = node
+                    break
+
+            if next_node is None or next_node == start_node:
+                break
+
+            creat_route.append(next_node)
+            current_node = next_node
+
+        return  route, charge_num, creat_route
+        #return solutionx, solutione, solutionc, solutionu, route, charge_num
+
 
     def get_obj(self):
         if self.model.status == GRB.OPTIMAL:
@@ -273,6 +309,9 @@ if __name__ == "__main__":
     pi = {'A': 20, 'C': 20}
     pi = Series(pi)
 
+    #print('m_f',m_f)
+    
+    # TODO  对偶值为每个订单起始点集合的
     assert set(pi.index) == set(Vs)
 
     # RMP问题满载路径的对偶值
