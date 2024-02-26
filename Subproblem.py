@@ -234,6 +234,7 @@ class SubProblem:
 
             creat_route.append(next_node)
             current_node = next_node
+        creat_route.append(next_node) 
 
         return  route, charge_num, charge_total, creat_route
         #return solutionx, solutione, solutionc, solutionu, route, charge_num
