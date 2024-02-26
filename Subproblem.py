@@ -14,14 +14,11 @@ class SubProblem:
         n = int(max_Vs.max()) #计算需要复制起点数
         # print('n', n)
         self.Vs = Vs  # 订单起点集合
-        # TODO 订单能访问的最大次数需要计算出来，而不是在这里直接给出固定值
-        # DONE 已添加计算
         self.Vs_all = [f"{node}{i}" for node in Vs for i in range(1, n)]  # 复制后的订单起点
         # print(self.Vs_all)
-        # TODO 主问题的对偶值不仅是满载路段的对偶值，还有换电站的对偶值, 传入变量sigma没用用到
-        # DONE sigma为换电站对偶值
-        # TODO assert set(pi.index) == Vs
-        # TODO assert set(sigma.index) == Se
+
+        assert set(pi.index) == Vs
+        assert set(sigma.index) == Se
         self.mu = mu #车辆最大载重
         self.sigma = sigma #换电站的对偶值
         self.pi = pi  # RMP问题得到的执行满载路段的对偶值
@@ -178,7 +175,7 @@ class SubProblem:
 
     def get_solution(self) -> dict:
         """ 返回 RC<0 的一条路径的相关信息
-        TODO [重要] 子问题求解出的结果还需要进行转换
+        子问题求解出的结果还需要进行转换
         :return:
         dict['route']:Series or dict 返回这条路径执行满载路段的次数, key为满载路段, value为执行的次数
         dict['route'] = Series(list[int], index=F)
@@ -186,7 +183,7 @@ class SubProblem:
         dict['charge_num']: Series or dict 返回这条路径中在换电站更换电池的个数, key为换电站，value为换电个数
         dict['charge_num'] = Series(list[int], index=Se)
         """
-
+        solution = dict()
         solutionx = pd.DataFrame(index=self.V_all, columns=self.V_all)
 
         # 遍历所有变量，并将它们的值填充到 DataFrame 中
@@ -194,9 +191,9 @@ class SubProblem:
             for j in self.V_all:
                 solutionx.at[i, j] = self.x[i, j].X
 
-        solutione = [int(self.e[i].X) for i in self.V_all]
-        solutionc = [int(self.c[i].X) for i in self.Se]
-        solutionu = [int(self.u[i].X) for i in self.V_all]
+        # solutione = [int(self.e[i].X) for i in self.V_all]
+        # solutionc = [int(self.c[i].X) for i in self.Se]
+        # solutionu = [int(self.u[i].X) for i in self.V_all]
         # print(self.Se)
         # print(self.V_all)
         # 提取路径信息
@@ -206,7 +203,7 @@ class SubProblem:
             # 遍历所有复制后的订单起点
             for i in self.V_all:
                 if i.startswith(j):  # 检查是否为该订单起点的复制节点
-                # 累加访问次数
+                    # 累加访问次数
                     route[j] = route.get(j, 0) + sum(solutionx.at[i, j] for j in self.V_all)
 
         # 提取换电站信息
@@ -228,10 +225,10 @@ class SubProblem:
 
             creat_route.append(next_node)
             current_node = next_node
-
-        return  route, charge_num, creat_route
-        #return solutionx, solutione, solutionc, solutionu, route, charge_num
-
+        solution['route'] = route
+        solution['charge_num'] = charge_num
+        solution['creat_route'] = creat_route
+        return solution
 
     def get_obj(self):
         if self.model.status == GRB.OPTIMAL:
@@ -310,8 +307,7 @@ if __name__ == "__main__":
     pi = Series(pi)
 
     #print('m_f',m_f)
-    
-    # TODO  对偶值为每个订单起始点集合的
+
     assert set(pi.index) == set(Vs)
 
     # RMP问题满载路径的对偶值

@@ -1,8 +1,8 @@
-import numpy as np
 import gurobipy as gp
-import pandas as pd
 from gurobipy import GRB
 from pandas import Series, DataFrame
+
+from data_process import data_pre
 
 
 class MasterProblem:
@@ -61,7 +61,7 @@ class MasterProblem:
         # 订单需求约束
         for k in self.c_kr.columns:
             col: pd.Series = self.c_kr[k]
-            cont = gp.quicksum(self.y_r[i] * col[i] for i in range(len(self.c_kr))) <= self.c_kr[k] / self.mu
+            cont = gp.quicksum(self.y_r[i] * col[i] for i in range(len(self.c_kr))) <= self.c_k[k] / self.mu
             self.model.addConstr(cont, name=k)
 
     def set_objective(self):
@@ -70,7 +70,11 @@ class MasterProblem:
 
     def solve(self, flag=0):
         self.model.Params.OutputFlag = flag  # 输出格式
-        self.model.optimize()  # 求解方法
+        self.model.optimize()
+        print("Model Status:", self.model.Status)
+        if self.model.Status == GRB.INFEASIBLE:
+            self.model.computeIIS()
+            self.model.write("model.ilp")
 
     def get_order_dual_vars(self) -> dict:
         dual_values_arc = {}
@@ -100,20 +104,37 @@ class MasterProblem:
 
 
 if __name__ == "__main__":
-    F = ['AB', 'CD']
-    G = ['SA', 'SC', 'DS', 'BS', 'DA', 'DC', 'BA', 'BC']
-    R = DataFrame([[9, 0, 9, 0, 1, 0, 0, 0, 1, 0],
-                   [0, 7, 0, 0, 0, 7, 0, 1, 0, 1],
-                   [5, 2, 4, 1, 0, 1, 0, 1, 1, 0]],
-                  index=range(3),
-                  columns=F + G)
-    mu = 3
-    mf = Series([6, 7.28], index=F)
-    mg = Series([1.69, 2.16, 6.46, 4.94, 6.00, 4.36, 33.6, 3.84], index=G)
-    df = Series([20, 24], index=F)
+    u = 3  # 货车最大载货量
+    order = DataFrame([['A', 'B', 10], ['A', 'D', 8], ['B', 'C', 13], ['D', 'C', 4]],
+                         columns=['start', 'end', 'weight'])
+    location = DataFrame([[-2, 0], [2, 1], [1, 1], [4, 1], [1.5, -1], [5, -2], [0, 1], [2, 0]],
+                            index=['S', 's', 'A', 'B', 'C', 'D', 'E', 'F'], columns=['x', 'y'])
+    pcost_f, pcost_g = 1, 0.8  # 单位距离满载/空载耗能
+    # 换电站集合
+    Se = {'E', 'F'}  # 充电站
+    S = {'S', 's'}  # 车库
+    df, V, Vs, F, m_f, G, m_g, L = data_pre(order, location, pcost_f, pcost_g, S, Se)
 
-    # mp = MasterProblem(R=R, F=F, G=G, mu=mu, m_f=mf, m_g=mg, d_f=df)
-    # mp.create_model()
-    # mp.set_objective()
-    # mp.solve()
-    # pi = mp.get_dual_vars()
+    # %开始求解
+    # 初始化解
+    R = DataFrame([[0] * len(L) for _ in range(len(F))], columns=L)  # 为每一个订单初始化一条运输路径
+    c_kr = DataFrame(0, columns=list(Se), index=range(len(order)))  # 每条路径使用电池情况
+    c_k = Series([10, 10], index=Se)  # 换电站最大电池数量
+
+    routes_power_consumption = []
+    for i in range(len(order)):
+        laden_sect: str = F[i]
+        idle_sect_0 = 'S' + laden_sect[0]
+        idle_sect_1 = laden_sect[1] + 'S'
+        R.loc[i, [laden_sect, idle_sect_0, idle_sect_1]] = 1
+        power_consumption = m_f[laden_sect] + m_g[idle_sect_0] + m_g[idle_sect_1]
+        routes_power_consumption.append(power_consumption)
+
+    mp = MasterProblem(R, routes_power_consumption, c_kr, c_k, F, u, df)
+    mp.create_model()
+    mp.set_objective()
+    mp.solve()
+    print(mp.solution)
+    print(mp.opt())
+    print(mp.get_order_dual_vars())
+    print(mp.get_charge_dual_vars())
