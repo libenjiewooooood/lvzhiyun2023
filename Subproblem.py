@@ -9,7 +9,7 @@ from data_process import data_pre
 
 class SubProblem:
     def __init__(self, pi: Series, Vs: set or list[str], m_f: Series, m_g: Series,
-                 s: set or list[str], Se: set or list[str], Q, Q_0, mu, sigma: Series ) -> None:
+                 s: set or list[str], Se: set or list[str], Q, Q_0, mu, sigma: Series) -> None:
         max_Vs = Q / m_f #计算每个满载路径最大重复次数
         n = int(max_Vs.max()) #计算需要复制起点数
         # print('n', n)
@@ -171,7 +171,7 @@ class SubProblem:
     def solve(self, flag=0):
         self.model.Params.OutputFlag = flag  # 输出格式
         self.model.optimize()
-        print("Model Status:", self.model.Status)
+        # print("Model Status:", self.model.Status)
         if self.model.Status == GRB.INFEASIBLE:
             self.model.computeIIS()
             self.model.write("model.ilp")
@@ -236,7 +236,7 @@ class SubProblem:
             current_node = next_node
         creat_route.append(next_node) 
 
-        return  route, charge_num, charge_total, creat_route
+        return route, charge_num, charge_total, creat_route
         #return solutionx, solutione, solutionc, solutionu, route, charge_num
 
 

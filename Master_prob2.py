@@ -71,7 +71,7 @@ class MasterProblem:
     def solve(self, flag=0):
         self.model.Params.OutputFlag = flag  # 输出格式
         self.model.optimize()
-        print("Model Status:", self.model.Status)
+        # print("Model Status:", self.model.Status)
         if self.model.Status == GRB.INFEASIBLE:
             self.model.computeIIS()
             self.model.write("model.ilp")
@@ -80,7 +80,7 @@ class MasterProblem:
         dual_values_arc = {}
         for arc in self.R.columns:
             if arc in self.F:
-                dual_values_arc[arc] = self.model.getConstrByName(arc).Pi
+                dual_values_arc[arc[0]] = self.model.getConstrByName(arc).Pi
         return dual_values_arc
 
     def get_charge_dual_vars(self) -> dict:
@@ -97,7 +97,7 @@ class MasterProblem:
 
     @property
     def solution(self):
-        return [int(self.y_r[i].X) for i in range(len(self.R))]
+        return [float(self.y_r[i].X) for i in range(len(self.R))]
 
     # def write(self):
     #     self.model.write("Master Problem.lp")
@@ -105,7 +105,7 @@ class MasterProblem:
 
 if __name__ == "__main__":
     u = 3  # 货车最大载货量
-    order = DataFrame([['A', 'B', 10], ['A', 'D', 8], ['B', 'C', 13], ['D', 'C', 4]],
+    order = DataFrame([['A', 'B', 10], ['C', 'D', 13]],
                          columns=['start', 'end', 'weight'])
     location = DataFrame([[-2, 0], [2, 1], [1, 1], [4, 1], [1.5, -1], [5, -2], [0, 1], [2, 0]],
                             index=['S', 's', 'A', 'B', 'C', 'D', 'E', 'F'], columns=['x', 'y'])
